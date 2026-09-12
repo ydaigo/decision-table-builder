@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Table Builder</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* ========== 配色（ライト基準。ダークは同じトークンを上書き） ========== */
+  :root{
+    color-scheme: light dark;
+    --bg:#f4f6f9; --panel:#ffffff; --panel2:#eef1f5; --ink:#1b1f27; --sub:#626c7a; --line:#d9dee6;
+    --cond-tint:#eaf0fc; --cond-accent:#3558c9; --act-tint:#fbf3e5; --act-accent:#a8651a;
+    --na-bg:#f1f2f4; --na-ink:#9ba3ad; --sel:#e3ebfb; --danger:#c33b2e; --ok:#1e8a4e; --warn:#b8791c;
+    --shadow:0 8px 24px rgba(20,30,50,.12);
+    --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans:"Noto Sans JP", ui-sans-serif, system-ui, "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14171c; --panel:#1c2027; --panel2:#252a33; --ink:#e5e8ec; --sub:#98a2ae; --line:#333a45;
+      --cond-tint:#1e2a47; --cond-accent:#86a4f2; --act-tint:#3a2c16; --act-accent:#e2ab52;
+      --na-bg:#191c21; --na-ink:#6a717b; --sel:#243458; --danger:#f07566; --ok:#5fcd8c; --warn:#e3b45e;
+      --shadow:0 8px 24px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14171c; --panel:#1c2027; --panel2:#252a33; --ink:#e5e8ec; --sub:#98a2ae; --line:#333a45;
+    --cond-tint:#1e2a47; --cond-accent:#86a4f2; --act-tint:#3a2c16; --act-accent:#e2ab52;
+    --na-bg:#191c21; --na-ink:#6a717b; --sel:#243458; --danger:#f07566; --ok:#5fcd8c; --warn:#e3b45e;
+    --shadow:0 8px 24px rgba(0,0,0,.45);
+  }
+  :root[data-theme="light"]{color-scheme:light;}
+  :root[data-theme="dark"]{color-scheme:dark;}
+
+  /* ========== 土台 ========== */
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:14px; line-height:1.5;
+    display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  }
+  button,input,select,textarea{font-family:inherit; color:inherit;}
+  button{cursor:pointer;}
+  button:disabled{opacity:.4; cursor:default;}
+  :focus-visible{outline:2px solid var(--cond-accent); outline-offset:1px;}
+
+  /* ========== ヘッダー ========== */
+  header{
+    display:flex; align-items:center; gap:16px; padding:10px 20px; flex-shrink:0;
+    background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap;
+  }
+  header .brand{display:flex; flex-direction:column;}
+  header h1{font-size:15px; margin:0; font-weight:700; letter-spacing:.01em; line-height:1.2;}
+  header .brand span{font-size:11px; color:var(--sub);}
+  .title-input{
+    flex:1; min-width:140px; font-size:14px; padding:7px 10px; border:1px solid var(--line);
+    border-radius:6px; background:var(--panel2); color:var(--ink);
+  }
+  .title-input:focus{background:var(--panel); outline:none; border-color:var(--cond-accent);}
+  .title-input::placeholder{color:var(--sub); opacity:.8;}
+  .hdr-actions{display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
+  .btn{
+    padding:6px 11px; border:1px solid var(--line); background:var(--panel); border-radius:6px;
+    font-size:12px; line-height:1.3; white-space:nowrap;
+  }
+  .btn:hover:not(:disabled){border-color:var(--cond-accent); color:var(--cond-accent);}
+  .btn.warn:hover:not(:disabled){border-color:var(--danger); color:var(--danger);}
+  .btn.primary{background:var(--cond-accent); border-color:var(--cond-accent); color:#fff; font-weight:700;}
+  .btn.primary:hover:not(:disabled){filter:brightness(1.08); color:#fff;}
+  .btn.ghost{border-color:transparent; background:transparent;}
+  .sep{width:1px; height:20px; background:var(--line); margin:0 4px;}
+  #themeBtn{display:inline-flex; align-items:center; justify-content:center; gap:5px; min-width:7em;}
+  #themeBtn .ic{font-size:13px; line-height:1;}
+  /* 表示が切り替わってもボタン幅が動かないよう、両方のラベルを重ねて置く */
+  .tg{display:grid; justify-items:center; align-items:center;}
+  .tg > span{grid-area:1 / 1; white-space:nowrap;}
+  .tg > span.off{visibility:hidden;}
+
+  /* ========== サイドバー ========== */
+  .body{flex:1; display:flex; min-height:0;}
+  aside{
+    width:320px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--line);
+    padding:14px 16px 24px; overflow-y:auto; display:flex; flex-direction:column; gap:18px;
+  }
+  aside h2{
+    font-size:11px; letter-spacing:.06em; color:var(--sub); margin:0 0 8px; font-weight:700;
+    display:flex; align-items:center; gap:8px;
+  }
+  aside h2::after{content:""; flex:1; height:1px; background:var(--line);}
+  .item{
+    display:flex; flex-direction:column; gap:6px; padding:8px; margin-bottom:6px;
+    border:1px solid var(--line); border-radius:6px; background:var(--panel);
+  }
+  .item .top{display:flex; gap:5px; align-items:center;}
+  .item input[type=text]{
+    flex:1; min-width:0; padding:5px 7px; border:1px solid var(--line); border-radius:4px;
+    font-size:13px; background:var(--panel);
+  }
+  .item .mini{
+    border:1px solid transparent; background:transparent; color:var(--sub); font-size:13px; line-height:1;
+    padding:4px 5px; border-radius:4px;
+  }
+  .item .mini:hover:not(:disabled){background:var(--panel2); color:var(--ink);}
+  .item .mini.x:hover:not(:disabled){color:var(--danger);}
+  .item .vals{display:flex; flex-direction:column; gap:4px;}
+  .item .vals input{font-family:var(--mono); font-size:12px;}
+  .item.grouped{border-left:3px solid var(--cond-accent);}
+  .item .frow{display:flex; align-items:center; gap:6px;}
+  .item .frow .flabel{font-size:10.5px; color:var(--sub); flex-shrink:0;}
+  .item .frow .combobox{flex:1; min-width:0;}
+  .item .frow .combobox > input{padding-right:22px;}
+  .chips{display:flex; gap:4px; flex-wrap:wrap;}
+  .chips button{
+    font-family:var(--mono); font-size:10.5px; padding:1px 7px; border-radius:999px;
+    border:1px solid var(--line); background:var(--panel2); color:var(--sub);
+  }
+  .chips button:hover{border-color:var(--cond-accent); color:var(--cond-accent);}
+  .tag{
+    display:inline-block; font-family:var(--mono); font-size:10px; font-weight:600; padding:1px 5px; border-radius:3px;
+    line-height:1.4; flex-shrink:0;
+  }
+  .tag.c{background:var(--cond-tint); color:var(--cond-accent);}
+  .tag.a{background:var(--act-tint); color:var(--act-accent);}
+  th .tag{margin-right:6px; vertical-align:1px;}
+  .add-btn{
+    width:100%; padding:7px; border:1px dashed var(--line); background:transparent;
+    color:var(--sub); border-radius:6px; font-size:12px;
+  }
+  .add-btn:hover{border-color:var(--cond-accent); color:var(--cond-accent);}
+  .gen-btn{
+    width:100%; padding:10px; border:none; border-radius:6px;
+    background:var(--ink); color:var(--bg); font-size:13px; font-weight:700;
+  }
+  .gen-btn:hover{filter:brightness(1.15);}
+  .gen-btn small{font-weight:400; opacity:.75; margin-left:4px;}
+  .hint{font-size:11.5px; color:var(--sub); line-height:1.6; margin:0;}
+  .hint kbd, .dlg-note kbd{font-family:var(--mono); font-size:10.5px; border:1px solid var(--line); border-bottom-width:2px; border-radius:3px; padding:0 4px; background:var(--panel2);}
+
+  /* ========== ツールバーと状態バー ========== */
+  main{flex:1; display:flex; flex-direction:column; min-width:0;}
+  .toolbar{
+    display:flex; gap:6px; padding:8px 16px; border-bottom:1px solid var(--line);
+    background:var(--panel); flex-wrap:wrap; flex-shrink:0; align-items:center;
+  }
+  .toolbar .spacer{flex:1; min-width:8px;}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+  .seg button{padding:6px 11px; border:none; background:var(--panel); font-size:12px; color:var(--sub);}
+  .seg button+button{border-left:1px solid var(--line);}
+  .seg button.active{background:var(--cond-tint); color:var(--cond-accent); font-weight:700;}
+
+  .status{
+    display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:6px 16px; min-height:36px;
+    border-bottom:1px solid var(--line); background:var(--panel); font-size:12px; flex-shrink:0;
+  }
+  .badge{
+    padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--sub); background:var(--panel2);
+    font-variant-numeric:tabular-nums;
+  }
+  .badge.ok{color:var(--ok); border-color:color-mix(in srgb, var(--ok) 45%, transparent); background:color-mix(in srgb, var(--ok) 9%, transparent);}
+  .badge.warn{color:var(--warn); border-color:color-mix(in srgb, var(--warn) 50%, transparent); background:color-mix(in srgb, var(--warn) 10%, transparent);}
+  details.badge{position:relative; cursor:pointer;}
+  details.badge summary{list-style:none;}
+  details.badge summary::-webkit-details-marker{display:none;}
+  details.badge summary::after{content:" ▾"; opacity:.7;}
+  details.badge ul{
+    position:absolute; top:calc(100% + 6px); left:0; z-index:30; background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; padding:8px 14px 8px 26px; margin:0; min-width:280px; max-width:560px; max-height:260px; overflow:auto;
+    box-shadow:var(--shadow); font-family:var(--mono); font-size:11.5px; color:var(--ink); white-space:nowrap; line-height:1.7;
+  }
+  .selinfo{color:var(--sub); margin-left:auto;}
+
+  .tableWrap{flex:1; overflow:auto; padding:16px;}
+  .empty{
+    display:flex; align-items:center; justify-content:center; height:100%; color:var(--sub); font-size:13px;
+    text-align:center; flex-direction:column; gap:8px;
+  }
+
+  /* ========== 表 ========== */
+  table.dt{border-collapse:collapse; font-family:var(--mono); font-size:12.5px; background:var(--panel); font-variant-numeric:tabular-nums;}
+  .dt th, .dt td{border:1px solid var(--line); padding:4px 6px; text-align:center; white-space:nowrap;}
+  .dt thead th{position:sticky; top:0; z-index:2; background:var(--panel);}
+  .dt tr.grp th{
+    font-family:var(--sans); font-size:11px; letter-spacing:.06em; font-weight:700; padding:4px 8px; text-align:center;
+  }
+  .dt th{font-family:var(--sans); font-weight:600; font-size:12.5px;}
+  .dt th.cond-h{background:var(--cond-tint); color:var(--cond-accent);}
+  .dt th.act-h{background:var(--act-tint); color:var(--act-accent);}
+  .dt th.note-h, .dt th.no, .dt th.sel{color:var(--sub); font-weight:500; font-size:11.5px;}
+  .dt td.cond-c{background:color-mix(in srgb, var(--cond-tint) 35%, var(--panel));}
+  .dt td.act-c{background:color-mix(in srgb, var(--act-tint) 35%, var(--panel));}
+  .dt td.no{color:var(--sub); font-size:11px;}
+  .dt tr.sel td, .dt td.sel{background:var(--sel) !important;}
+  .dt tr.na td, .dt td.na{background:var(--na-bg) !important; color:var(--na-ink);}
+  .dt tr.na td .cell, .dt td.na .cell{color:var(--na-ink);}
+  .dt tr.na td .cellbox::after, .dt td.na .cellbox::after,
+  .dt tr.na td .caret::after, .dt td.na .caret::after{opacity:.3;}
+  .dt tr.na td.no{text-decoration:line-through;}
+  /* 縦表：見出し列は左に固定。グループ列があるときはその幅（--gw）だけ右へずらす */
+  .dt.v th.lbl{position:sticky; left:var(--gw, 0px); z-index:1; text-align:left; background:var(--panel);}
+  .dt.v th.gname{
+    position:sticky; left:0; z-index:1; text-align:left; background:var(--panel);
+    font-family:var(--sans); font-weight:700; font-size:11.5px; color:var(--sub); padding:4px 8px;
+  }
+  .dt.v th.gname.cond-h{background:var(--cond-tint);}
+  .dt.v th.gname.act-h{background:var(--act-tint);}
+  .dt.v th.gname.cont{border-top:none;}
+  .dt.v thead th.corner{z-index:3;}
+  .dt.v th.rule-h{font-family:var(--mono); font-weight:600; min-width:3.2em;}
+  .dt.v th.rule-h.na{color:var(--na-ink); text-decoration:line-through; background:var(--na-bg);}
+  .dt.v th.rule-h.sel{background:var(--sel);}
+  .dt.v th.rule-h label, .dt.v th.corner label{cursor:pointer; display:inline-flex; gap:4px; align-items:center;}
+  .dt.v th.corner label{font-family:var(--sans); font-weight:500; font-size:11.5px; color:var(--sub);}
+  .dt.v tr.grp th.sect{position:sticky; left:0; z-index:1; text-align:left; background:var(--cond-tint);}
+  .dt.v tr.grp th.sect.act-h{background:var(--act-tint);}
+  .dt.h th.gspan{font-weight:700; font-size:11.5px; letter-spacing:.04em;}
+
+  /* セルの操作枠：選択肢のセルも自由入力のセルも、同じ大きさ・同じ位置にそろえる */
+  .dt td.cond-c, .dt td.act-c, .dt td.note-c{padding:2px 3px;}
+  .cellbox{position:relative; display:block;}
+  .cellbox::after{
+    content:""; position:absolute; right:7px; top:calc(50% - 2px); pointer-events:none;
+    border-left:3.5px solid transparent; border-right:3.5px solid transparent; border-top:4px solid var(--sub);
+    opacity:.6;
+  }
+  .cell{
+    font:inherit; display:block; width:100%; box-sizing:border-box; min-height:25px; line-height:1.5;
+    border:1px solid transparent; border-radius:4px; background:transparent; color:var(--ink); text-align:center;
+  }
+  select.cell{appearance:none; -webkit-appearance:none; padding:2px 18px; text-align-last:center; cursor:pointer;}
+  input.cell{
+    font-family:var(--sans); font-size:12.5px; padding:2px 8px; min-width:6em;
+    border-bottom-color:var(--line); border-bottom-style:dashed;
+  }
+  input.cell.note{text-align:left; min-width:9em;}
+  input.cell::placeholder{color:var(--line);}
+  input.cell:hover, input.cell:focus{border-bottom-style:solid;}
+  .cell:hover{border-color:var(--line); background:var(--panel);}
+  .cell:focus{outline:none; border-color:var(--cond-accent); background:var(--panel);}
+  .cell.dash{color:var(--sub);}
+  .cell.on{color:var(--act-accent); font-weight:600;}
+  .cell.off{color:var(--sub);}
+
+  /* 直接入力もプルダウンからの選択もできる欄 */
+  .combobox{position:relative; display:block;}
+  .combobox > input{width:100%;}
+  .combobox > input.cell{padding-left:20px; padding-right:20px;}
+  .combobox .caret{
+    position:absolute; right:2px; top:1px; bottom:1px; width:17px; padding:0; border:none;
+    background:transparent; border-radius:4px; display:flex; align-items:center; justify-content:center;
+  }
+  .combobox .caret::after{
+    content:""; border-left:3.5px solid transparent; border-right:3.5px solid transparent;
+    border-top:4px solid var(--sub); opacity:.6;
+  }
+  .combobox .caret:hover{background:var(--panel2);}
+  .combobox .caret:hover::after{opacity:1; border-top-color:var(--cond-accent);}
+  .menu{
+    position:fixed; z-index:60; background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    box-shadow:var(--shadow); padding:4px; max-height:240px; overflow-y:auto;
+  }
+  .menu button{
+    display:block; width:100%; text-align:left; border:none; background:transparent; border-radius:5px;
+    padding:5px 10px; font-size:12.5px; line-height:1.5; color:var(--ink); white-space:nowrap;
+  }
+  .menu button:hover, .menu button:focus{background:var(--panel2); outline:none;}
+  .menu button.cur{color:var(--cond-accent); font-weight:700;}
+  .vhint{
+    display:block; font-family:var(--mono); font-size:10px; font-weight:400; letter-spacing:0;
+    color:var(--sub); opacity:.9; margin-top:1px;
+  }
+  .dt input[type=checkbox]{accent-color:var(--cond-accent); margin:0; vertical-align:middle; cursor:pointer;}
+
+  /* ========== ショートカット一覧 ========== */
+  .dlg{
+    border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--ink);
+    padding:0; width:min(560px, calc(100vw - 32px)); box-shadow:var(--shadow);
+  }
+  .dlg::backdrop{background:rgba(10,14,20,.5);}
+  .dlg-head{display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--line); margin:0;}
+  .dlg-head strong{flex:1; font-size:14px;}
+  table.keys{border-collapse:collapse; width:100%; font-size:12.5px;}
+  table.keys th, table.keys td{border-bottom:1px solid var(--line); padding:7px 16px; text-align:left; vertical-align:top;}
+  table.keys th{font-size:11px; color:var(--sub); font-weight:600; white-space:nowrap;}
+  table.keys td.k{font-family:var(--mono); white-space:nowrap; color:var(--sub);}
+  table.keys .here{color:var(--cond-accent);}
+  table.keys td.k.here{font-weight:600;}
+  .dlg-note{margin:0; padding:12px 16px; font-size:11.5px; color:var(--sub); line-height:1.7;}
+
+  /* ========== 通知 ========== */
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(8px);
+    background:var(--ink); color:var(--bg); padding:9px 16px; border-radius:8px; font-size:12.5px;
+    opacity:0; pointer-events:none; transition:opacity .18s, transform .18s; box-shadow:var(--shadow); z-index:50;
+    display:flex; gap:12px; align-items:center; max-width:calc(100vw - 32px);
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto;}
+  .toast button{background:transparent; border:1px solid color-mix(in srgb, var(--bg) 40%, transparent); color:var(--bg); border-radius:5px; padding:2px 9px; font-size:11.5px; white-space:nowrap;}
+  @media (prefers-reduced-motion: reduce){ .toast{transition:none;} }
+
+  @media (max-width: 900px){
+    body{height:auto; overflow:auto;}
+    .body{flex-direction:column;}
+    aside{width:auto; border-right:none; border-bottom:1px solid var(--line);}
+    .tableWrap{min-height:320px;}
+  }
+</style>
+<script>
+/* 本文が描画される前にテーマを当て、切替時のちらつきを防ぐ */
+(function(){
+  try{
+    var r = document.documentElement;
+    r.setAttribute('data-host-theme', r.getAttribute('data-theme') || '');
+    var m = localStorage.getItem('decision-table-builder.theme');
+    if (m === 'light' || m === 'dark') r.setAttribute('data-theme', m);
+  }catch(e){}
+})();
+</script>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Decision Table Builder</h1>
+    <span>ディシジョンテーブルを作成</span>
+  </div>
+  <input id="titleInput" class="title-input" type="text" autocomplete="off"
+         placeholder="表の名前（JSON保存のファイル名になります）" aria-label="表の名前">
+  <div class="hdr-actions">
+    <button class="btn" id="sampleBtn">サンプル</button>
+    <button class="btn" id="newBtn">新規</button>
+    <button class="btn" id="saveJsonBtn" title="編集内容をJSONファイルとして保存（クリップボードにもコピー）">JSON保存</button>
+    <button class="btn" id="loadJsonBtn" title="保存したJSONファイルを読み込む">JSON読込</button>
+    <input type="file" id="jsonFile" accept=".json,application/json" hidden>
+    <span class="sep"></span>
+    <button class="btn" id="keysBtn" type="button" title="ショートカットキー一覧（? キーでも開きます）">⌨ ショートカット</button>
+    <button class="btn" id="themeBtn" type="button"><span class="ic">◐</span>自動</button>
+  </div>
+</header>
+
+<div class="body">
+  <aside>
+    <section>
+      <h2>条件</h2>
+      <div id="conditionList"></div>
+      <button class="add-btn" id="addConditionBtn">+ 条件を追加</button>
+    </section>
+    <section>
+      <h2>動作 / 結果</h2>
+      <div id="actionList"></div>
+      <button class="add-btn" id="addActionBtn">+ 動作を追加</button>
+    </section>
+    <section>
+      <button class="gen-btn" id="generateBtn">全組み合わせで表を生成<small id="comboCount"></small></button>
+      <button class="add-btn" id="addRowBtn" style="margin-top:8px">+ 空のルールを1行追加</button>
+    </section>
+    <p class="hint">
+      値は「Y, N」のようにカンマ区切り。3値以上も可。<br>
+      グループ名を付けると、同じグループが続く条件が表の上でひとまとまりになります。並び順は ↑↓ で変えられます。<br>
+      表の条件セルはプルダウンで選びます。列見出しに選べる値が並ぶので、そこを見れば何を入れられるか分かります。<br>
+      「-」は「この条件は結果に影響しない」の意味です。<br>
+      動作のセルとグループ欄は、直接入力しても、右の ▾ から候補を選んでも構いません。動作の候補には ○ / × と、その列ですでに使った値が並びます。<br>
+      条件を後から追加すると既存のルールが自動で展開され、再生成しても入力済みの動作は引き継がれます。<br>
+      元に戻す・コピー・貼り付けはショートカットキーで行えます。一覧は右上の「ショートカット」または <kbd>?</kbd> で開きます。<br>
+      編集内容はこのブラウザに自動保存されます。
+    </p>
+  </aside>
+
+  <main>
+    <div class="toolbar">
+      <div class="seg" id="layoutSeg">
+        <button data-layout="v" title="伝統的なディシジョンテーブルの形">ルール＝列（縦）</button>
+        <button data-layout="h" title="1ルール1行の一覧形式">ルール＝行（横）</button>
+      </div>
+      <span class="sep"></span>
+      <button class="btn" id="naBtn" title="選択したルールを「発生しない組み合わせ」にする／戻す"><span class="tg"><span>N/A にする</span><span class="off">N/A 解除</span></span></button>
+      <button class="btn warn" id="deleteBtn">削除</button>
+      <span class="sep"></span>
+      <button class="btn" id="simplifyBtn" title="動作が同じで条件が1つだけ異なるルールを「-」でまとめます">同じ動作のルールを自動でまとめる</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="selToggleBtn" title="すべてのルールを選ぶ／選択を解除する"><span class="tg"><span>全選択</span><span class="off">選択解除</span></span></button>
+      <span class="sep"></span>
+      <button class="btn primary" id="copyMdBtn" title="Notion にそのまま貼り付けられます">Markdown をコピー</button>
+      <button class="btn" id="copyCsvBtn">CSV をコピー</button>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="tableWrap" id="tableWrap"></div>
+  </main>
+</div>
+
+<dialog class="dlg" id="keysDlg" aria-labelledby="keysTitle">
+  <form method="dialog" class="dlg-head">
+    <strong id="keysTitle">ショートカットキー</strong>
+    <button class="btn ghost" value="close" aria-label="閉じる">✕</button>
+  </form>
+  <table class="keys"><thead id="keysHead"></thead><tbody id="keysBody"></tbody></table>
+  <p class="dlg-note">
+    ルールのコピーと貼り付けは、このツールの中だけで働きます。文字を入力している間は、そのまま文字の編集に使われます。<br>
+    閉じるには <kbd>Esc</kbd> を押すか、外側をクリックしてください。
+  </p>
+</dialog>
+
+<div class="menu" id="comboMenu" role="listbox" hidden></div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ======================================================================
+ * 定数と DOM 参照
+ * ====================================================================== */
+const LS_KEY    = 'decision-table-builder.v2';
+const THEME_KEY = 'decision-table-builder.theme';
+const MAX_ROWS  = 4096;                   // 生成と網羅チェックの上限（組み合わせ数）
+const DASH      = '-';                    // 「この条件は結果に影響しない」を表す値
+const MARKS     = ['○', '×', ''];         // ○/× 型の動作セルが取る値（空 = 未設定）
+const PRESETS   = ['Y, N', '○, ×'];       // 条件の値のテンプレート
+
+const $ = s => document.querySelector(s);
+const dom = {
+  sidebar: $('aside'), condList: $('#conditionList'), actList: $('#actionList'), comboCount: $('#comboCount'),
+  title: $('#titleInput'), table: $('#tableWrap'), status: $('#status'), layoutSeg: $('#layoutSeg'),
+  naBtn: $('#naBtn'), selToggle: $('#selToggleBtn'), themeBtn: $('#themeBtn'),
+  keysDlg: $('#keysDlg'), keysHead: $('#keysHead'), keysBody: $('#keysBody'),
+  toast: $('#toast'), jsonFile: $('#jsonFile'), comboMenu: $('#comboMenu'),
+};
+
+/* ======================================================================
+ * 汎用ユーティリティ
+ * ====================================================================== */
+const escH = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const byId = (arr, id) => arr.find(x => x.id === id);
+const uniq = arr => [...new Set(arr)];
+const sameList = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const cartesian = arrs => arrs.reduce((acc, cur) => acc.flatMap(a => cur.map(c => [...a, c])), [[]]);
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+/* 全角文字を 2、それ以外を 1 として表示幅を数える（Markdown の桁そろえと列幅の見積もりに使う） */
+const WIDE = /[ᄀ-ᅟ⺀-〾ぁ-㏿㐀-䶿一-鿿ꀀ-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦①-⓿■-◿☀-➿　]/;
+const dispW = s => { let w = 0; for (const ch of String(s)) w += WIDE.test(ch) ? 2 : 1; return w; };
+const mdEsc = s => String(s ?? '').replace(/\|/g, '\\|').replace(/\r?\n+/g, ' ').trim();
+
+function parseValues(str){
+  const v = uniq(String(str).split(/[,、，]/).map(s => s.trim()).filter(s => s && s !== DASH));
+  return v.length ? v : ['Y', 'N'];
+}
+function focusField(selector){
+  const el = dom.sidebar.querySelector(selector);
+  if (el) { el.focus(); el.select(); }
+}
+
+/* ======================================================================
+ * データモデル
+ *   state = { title, conditions:[{id,name,values,group}], actions:[{id,name,type}], rows:[{id,cond,act,na,note}], layout }
+ * ====================================================================== */
+let uid = 1;
+const nid = () => uid++;
+let state = null;
+
+function fixUid(){ uid = 1 + Math.max(0, ...[...state.conditions, ...state.actions, ...state.rows].map(x => x.id)); }
+
+const blank   = () => ({ title:'', conditions:[], actions:[], rows:[], layout:'v' });
+const newCond = (name, group = '') => ({ id:nid(), name, values:['Y', 'N'], group });
+const newAct  = name => ({ id:nid(), name });
+
+function starter(){
+  const s = blank();
+  s.conditions = [newCond('条件1'), newCond('条件2')];
+  s.actions = [newAct('動作1')];
+  return s;
+}
+function sample(){
+  const rank = { id:nid(), name:'会員ランク', values:['無料', '有料'], group:'会員' };
+  const amt  = { id:nid(), name:'購入金額 5,000円以上', values:['Y', 'N'], group:'注文' };
+  const free = newAct('送料無料');
+  const s = blank();
+  s.title = 'ECサイト 送料無料の判定';
+  s.conditions = [rank, amt]; s.actions = [free];
+  s.rows = cartesian([rank.values, amt.values]).map(([r, a]) => ({
+    id:nid(), cond:{ [rank.id]:r, [amt.id]:a }, na:false, note:'',
+    act:{ [free.id]: (r === '有料' || a === 'Y') ? '○' : '×' },
+  }));
+  return s;
+}
+function newRow(){
+  const r = { id:nid(), cond:{}, act:{}, na:false, note:'' };
+  state.conditions.forEach(c => r.cond[c.id] = DASH);
+  state.actions.forEach(a => r.act[a.id] = '');
+  return r;
+}
+const cloneRow = r => ({ id:nid(), cond:{ ...r.cond }, act:{ ...r.act }, na:r.na, note:r.note || '' });
+
+const condVal   = (r, c) => r.cond[c.id] ?? DASH;
+const actVal    = (r, a) => r.act[a.id] || '';
+const groupOf   = c => (c.group || '').trim();
+const ruleLabel = (n, na) => na ? `~~R${n}~~` : `R${n}`;
+const comboTotal = () => state.conditions.length ? state.conditions.reduce((n, c) => n * c.values.length, 1) : 0;
+const hasCondGroups = () => state.conditions.some(groupOf);
+
+/* 連続する同じグループ名の条件をひとまとまり（run）にする */
+function condRuns(){
+  const runs = [];
+  for (const c of state.conditions) {
+    const g = groupOf(c), last = runs[runs.length - 1];
+    if (last && last.group === g) last.items.push(c); else runs.push({ group:g, items:[c] });
+  }
+  return runs;
+}
+
+/* 外から来た JSON を、このツールが扱える形に整える。形が違えば null */
+function validate(obj){
+  if (!obj || typeof obj !== 'object' || ![obj.conditions, obj.actions, obj.rows].every(Array.isArray)) return null;
+  const s = blank();
+  s.title = String(obj.title ?? '');
+  s.layout = obj.layout === 'h' ? 'h' : 'v';
+  s.conditions = obj.conditions.map(c => ({
+    id:+c.id, name:String(c.name ?? ''), group:String(c.group ?? ''),
+    values:Array.isArray(c.values) && c.values.length ? c.values.map(String) : ['Y', 'N'],
+  }));
+  s.actions = obj.actions.map(a => ({ id:+a.id, name:String(a.name ?? '') }));
+  s.rows = obj.rows.map(r => ({ id:+r.id, cond:{ ...(r.cond || {}) }, act:{ ...(r.act || {}) }, na:!!r.na, note:String(r.note || '') }));
+  return s;
+}
+
+/* ======================================================================
+ * 履歴（元に戻す／やり直す）
+ *   snapshot()  … 操作の直前に呼ぶ
+ *   beginEdit() / touchEdit() … 文字入力は「フォーカスした時点」を1回だけ履歴に載せる
+ * ====================================================================== */
+const history = { undo:[], redo:[] };
+let pending = null;
+
+function pushUndo(json){ history.undo.push(json); if (history.undo.length > 120) history.undo.shift(); history.redo.length = 0; }
+function snapshot(){ pending = null; pushUndo(JSON.stringify(state)); }
+function beginEdit(){ pending = JSON.stringify(state); }
+function touchEdit(){ if (pending !== null) { pushUndo(pending); pending = null; } }
+/* 入力中なら打ち始めの状態を、そうでなければ今の状態を履歴に残す */
+function recordEdit(){ if (pending !== null) touchEdit(); else snapshot(); }
+function undo(){
+  if (!history.undo.length) return toast('元に戻す操作はありません');
+  history.redo.push(JSON.stringify(state)); restore(history.undo.pop());
+}
+function redo(){
+  if (!history.redo.length) return toast('やり直す操作はありません');
+  history.undo.push(JSON.stringify(state)); restore(history.redo.pop());
+}
+function restore(json){ state = JSON.parse(json); fixUid(); selected.clear(); pending = null; renderAll(); }
+
+/* ======================================================================
+ * 保存と読み込み
+ * ====================================================================== */
+function persist(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }
+function load(){
+  try { const s = validate(JSON.parse(localStorage.getItem(LS_KEY))); if (s) return s; } catch (e) {}
+  return sample();
+}
+/* 表全体を置き換える（サンプル・新規・JSON 読込で共通） */
+function replaceState(next, msg){ snapshot(); state = next; fixUid(); selected.clear(); renderAll(); toast(msg, true); }
+
+/* ======================================================================
+ * 選択（ルールの選択状態は state に含めない）
+ * ====================================================================== */
+let selected = new Set();
+let lastClickedRow = null;
+
+const selRows = () => state.rows.filter(r => selected.has(r.id));
+function needSel(){
+  const s = selRows();
+  if (s.length) return s;
+  toast('ルールを選択してください（縦表は列見出し、横表は行頭のチェック）');
+  return null;
+}
+function setSelected(id, on){
+  if (on) selected.add(id); else selected.delete(id);
+  dom.table.querySelectorAll(`tr[data-rid="${id}"], th[data-rid="${id}"], td[data-rid="${id}"]`).forEach(el => el.classList.toggle('sel', on));
+  dom.table.querySelectorAll(`.rowsel[data-rid="${id}"]`).forEach(cb => cb.checked = on);
+}
+/* Shift+クリック：前回クリックした行との間をまとめて選ぶ */
+function selectRange(toId, on){
+  const a = state.rows.findIndex(r => r.id === lastClickedRow), b = state.rows.findIndex(r => r.id === toId);
+  if (a < 0 || b < 0) return setSelected(toId, on);
+  for (let i = Math.min(a, b); i <= Math.max(a, b); i++) setSelected(state.rows[i].id, on);
+}
+function toggleState(){
+  const sel = selRows();
+  return {
+    allSelected: !!state.rows.length && selected.size === state.rows.length,
+    naOn: !!sel.length && sel.every(r => r.na),
+  };
+}
+/* トグルボタンは、今押すと何が起きるかをラベルにする（幅を変えないため2枚重ねを切り替える） */
+function swapLabel(btn, alt){
+  const s = btn.querySelectorAll ? btn.querySelectorAll('.tg > span') : [];
+  if (s.length < 2) return;
+  s[0].classList.toggle('off', !!alt);
+  s[1].classList.toggle('off', !alt);
+}
+function updateSelUI(){
+  const all = $('#selAllChk');
+  if (all) { const n = selected.size, t = state.rows.length; all.checked = n > 0 && n === t; all.indeterminate = n > 0 && n < t; }
+  const info = $('#selInfo'); if (info) info.textContent = selected.size ? `${selected.size} 件選択中` : '';
+  const t = toggleState();
+  swapLabel(dom.selToggle, t.allSelected);
+  swapLabel(dom.naBtn, t.naOn);
+}
+
+/* ======================================================================
+ * 通知
+ * ====================================================================== */
+let toastTimer;
+function toast(msg, withUndo){
+  dom.toast.innerHTML = escH(msg) + (withUndo ? '<button type="button" id="toastUndo">元に戻す</button>' : '');
+  dom.toast.classList.add('show');
+  const u = $('#toastUndo'); if (u) u.addEventListener('click', () => { undo(); dom.toast.classList.remove('show'); });
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => dom.toast.classList.remove('show'), withUndo ? 4500 : 2000);
+}
+
+/* ======================================================================
+ * 描画：サイドバー（条件と動作の定義）
+ * ====================================================================== */
+/* 直接入力もでき、▾ から既存の値も選べる欄。候補は開くときに作る（combo 参照） */
+function comboField(attrs, value, cls, opt = {}){
+  return `<span class="combobox">`
+    + `<input type="text"${cls ? ` class="${cls}"` : ''} value="${escH(value)}" ${attrs} autocomplete="off"`
+    + ` role="combobox" aria-expanded="false" aria-autocomplete="list"`
+    + (opt.placeholder ? ` placeholder="${escH(opt.placeholder)}"` : '')
+    + (opt.label ? ` aria-label="${escH(opt.label)}"` : '')
+    + (opt.title ? ` title="${escH(opt.title)}"` : '') + '>'
+    + `<button type="button" class="caret" tabindex="-1" aria-label="候補を開く"></button></span>`;
+}
+const groupField = c => comboField(`data-role="cgroup"`, c.group || '', '', {
+  placeholder: `${DASH}（グループなし）`, label:'条件のグループ',
+  title:'グループ名。直接入力するか、▾ から既存のグループを選べます',
+});
+/* グループの候補：なし + すでに使われているグループ名 */
+const groupOptions = () => [
+  { value:'', label:`${DASH}（グループなし）` },
+  ...uniq(state.conditions.map(groupOf).filter(Boolean)).map(n => ({ value:n, label:n })),
+];
+/* 動作の候補：○ / × と、その列ですでに使った値 + 空欄 */
+const actionOptions = a => [
+  ...uniq([...MARKS.filter(Boolean), ...state.rows.map(r => actVal(r, a)).filter(Boolean)]).map(v => ({ value:v, label:v })),
+  { value:'', label:'（空欄）' },
+];
+const moveBtns = (prefix, i, n) =>
+  `<button class="mini" data-role="${prefix}up" title="上へ" ${i === 0 ? 'disabled' : ''}>↑</button>` +
+  `<button class="mini" data-role="${prefix}down" title="下へ" ${i === n - 1 ? 'disabled' : ''}>↓</button>`;
+
+function renderSidebar(){
+  const C = state.conditions, A = state.actions;
+  dom.condList.innerHTML = C.map((c, i) => `
+    <div class="item${groupOf(c) ? ' grouped' : ''}" data-id="${c.id}">
+      <div class="top">
+        <span class="tag c">C${i+1}</span>
+        <input type="text" data-role="cname" value="${escH(c.name)}" placeholder="条件名" aria-label="条件名">
+        ${moveBtns('c', i, C.length)}
+        <button class="mini x" data-role="cdel" title="この条件を削除">×</button>
+      </div>
+      <div class="frow">
+        <span class="flabel">グループ</span>
+        ${groupField(c)}
+      </div>
+      <div class="vals">
+        <input type="text" data-role="cvals" value="${escH(c.values.join(', '))}" placeholder="値をカンマ区切り (例: Y, N)" title="Enter またはフォーカスを外すと反映されます" aria-label="条件の値">
+        <span class="chips">${PRESETS.map(p => `<button type="button" data-role="preset" data-vals="${escH(p)}">${escH(p)}</button>`).join('')}</span>
+      </div>
+    </div>`).join('');
+  dom.actList.innerHTML = A.map((a, i) => `
+    <div class="item" data-id="${a.id}">
+      <div class="top">
+        <span class="tag a">A${i+1}</span>
+        <input type="text" data-role="aname" value="${escH(a.name)}" placeholder="動作名" aria-label="動作名">
+        ${moveBtns('a', i, A.length)}
+        <button class="mini x" data-role="adel" title="この動作を削除">×</button>
+      </div>
+    </div>`).join('');
+  const total = comboTotal();
+  dom.comboCount.textContent = total ? `（${total} 通り）` : '';
+}
+
+/* ======================================================================
+ * 描画：表
+ * ====================================================================== */
+/* 保存済みの値が選択肢に無いときは、勝手に書き換えず先頭に足して残す */
+function optionsHtml(list, v, label = o => o){
+  return (list.includes(v) ? list : [v, ...list])
+    .map(o => `<option value="${escH(o)}"${o === v ? ' selected' : ''}>${escH(label(o))}</option>`).join('');
+}
+/* 列が選択肢より狭くなって文字が切れないよう、最長の選択肢から下限幅を決める */
+const minW = list => `min-width:calc(${Math.max(2, ...list.map(dispW))}ch + 3em)`;
+const valHint = c => `<span class="vhint">${c.values.slice(0, 5).map(escH).join(' / ')}${c.values.length > 5 ? ' …' : ''} / ${DASH}</span>`;
+const markClass = v => v === '○' ? 'on' : v === '×' ? 'off' : '';
+const cellClass = cls => 'cell' + (cls ? ' ' + cls : '');
+
+function selectCell(cls, list, data, name, hint, label){
+  const v = data.value;
+  return `<span class="cellbox"><select class="${cellClass(cls)}" style="${minW(list)}" ${data.attrs} aria-label="${escH(name)}" title="${escH(`${name}　${hint}`)}">${optionsHtml(list, v, label)}</select></span>`;
+}
+function condCell(r, c){
+  const v = condVal(r, c), list = [...c.values, DASH];
+  return selectCell(v === DASH ? 'dash' : '', list, { value:v, attrs:`data-rid="${r.id}" data-cid="${c.id}"` }, c.name, `選べる値：${list.join(' / ')}`);
+}
+function actCell(r, a){
+  const v = actVal(r, a);
+  return comboField(`data-rid="${r.id}" data-aid="${a.id}"`, v, cellClass(markClass(v)), {
+    placeholder:'自由入力', label:a.name,
+    title:`${a.name}　自由に入力できます。▾ から ○ / × やこの列で使った値も選べます`,
+  });
+}
+const noteCell = r => `<input type="text" class="cell note" value="${escH(r.note || '')}" data-rid="${r.id}" placeholder="備考を自由入力" aria-label="備考">`;
+
+const rowCls   = r => `${r.na ? 'na' : ''} ${selected.has(r.id) ? 'sel' : ''}`.trim();
+const ruleChk  = (r, i) => `<input type="checkbox" class="rowsel" data-rid="${r.id}"${selected.has(r.id) ? ' checked' : ''} aria-label="ルール ${i+1} を選択">`;
+const condHead = (c, i) => `<span class="tag c">C${i+1}</span>${escH(c.name)}${valHint(c)}`;
+const actHead  = (a, i) => `<span class="tag a">A${i+1}</span>${escH(a.name)}`;
+const emptyMsg = msg => `<div class="empty">${msg}</div>`;
+
+/* 横表：1ルール = 1行 */
+function tableH(C, A, R){
+  let h = '<table class="dt h"><thead>';
+  h += `<tr class="grp"><th class="sel"></th><th class="no"></th>`
+     + (C.length ? `<th class="cond-h" colspan="${C.length}">条件</th>` : '')
+     + (A.length ? `<th class="act-h" colspan="${A.length}">動作 / 結果</th>` : '')
+     + '<th class="note-h"></th></tr>';
+  if (hasCondGroups()) {
+    h += '<tr class="gsub"><th class="sel"></th><th class="no"></th>'
+       + condRuns().map(run => `<th class="cond-h gspan" colspan="${run.items.length}">${escH(run.group)}</th>`).join('')
+       + (A.length ? `<th class="act-h" colspan="${A.length}"></th>` : '') + '<th class="note-h"></th></tr>';
+  }
+  h += '<tr><th class="sel"><input type="checkbox" id="selAllChk" title="全選択"></th><th class="no">#</th>'
+     + C.map((c, i) => `<th class="cond-h">${condHead(c, i)}</th>`).join('')
+     + A.map((a, i) => `<th class="act-h">${actHead(a, i)}</th>`).join('')
+     + '<th class="note-h">備考</th></tr></thead><tbody>';
+  h += R.map((r, i) =>
+    `<tr data-rid="${r.id}" class="${rowCls(r)}"><td class="sel">${ruleChk(r, i)}</td><td class="no">${i+1}</td>`
+    + C.map(c => `<td class="cond-c">${condCell(r, c)}</td>`).join('')
+    + A.map(a => `<td class="act-c">${actCell(r, a)}</td>`).join('')
+    + `<td class="note-c">${noteCell(r)}</td></tr>`).join('');
+  return h + '</tbody></table>';
+}
+
+/* 縦表：1ルール = 1列（伝統的なディシジョンテーブル） */
+function tableV(C, A, R){
+  const groups = hasCondGroups();
+  const gcol  = (text, tint, cont) => groups ? `<th class="gname ${tint}${cont ? ' cont' : ''}">${text}</th>` : '';
+  const cells = (cls, fn) => R.map(r => `<td class="${cls} ${rowCls(r)}" data-rid="${r.id}">${fn(r)}</td>`).join('');
+  const span  = R.length + (groups ? 2 : 1);
+  let h = '<table class="dt v"><thead><tr>' + (groups ? '<th class="gname corner"></th>' : '')
+        + '<th class="lbl corner"><label><input type="checkbox" id="selAllChk"> 全選択</label></th>'
+        + R.map((r, i) => `<th class="rule-h ${rowCls(r)}" data-rid="${r.id}"><label>${ruleChk(r, i)} R${i+1}</label></th>`).join('')
+        + '</tr></thead><tbody>';
+  if (C.length) {
+    h += `<tr class="grp"><th class="sect cond-h" colspan="${span}">条件</th></tr>`;
+    let ci = 0;
+    for (const run of condRuns()) run.items.forEach((c, k) => {
+      h += `<tr>${gcol(k ? '' : escH(run.group), 'cond-h', k > 0)}<th class="lbl cond-h">${condHead(c, ci++)}</th>${cells('cond-c', r => condCell(r, c))}</tr>`;
+    });
+  }
+  if (A.length) {
+    h += `<tr class="grp"><th class="sect act-h" colspan="${span}">動作 / 結果</th></tr>`;
+    A.forEach((a, i) => { h += `<tr>${gcol('', 'act-h', i > 0)}<th class="lbl act-h">${actHead(a, i)}</th>${cells('act-c', r => actCell(r, a))}</tr>`; });
+  }
+  h += `<tr>${gcol('', 'note-h', false)}<th class="lbl note-h">備考</th>${cells('note-c', noteCell)}</tr>`;
+  return h + '</tbody></table>';
+}
+
+function renderTable(){
+  const { conditions:C, actions:A, rows:R } = state;
+  if (!C.length && !A.length) { dom.table.innerHTML = emptyMsg('左のパネルで条件と動作を追加してください'); return; }
+  if (!R.length) { dom.table.innerHTML = emptyMsg('「全組み合わせで表を生成」を押すとルールが作られます<br><span style="font-size:12px">必要なルールだけ手で作る場合は「空のルールを1行追加」</span>'); return; }
+  dom.table.innerHTML = state.layout === 'h' ? tableH(C, A, R) : tableV(C, A, R);
+  updateSelUI();
+  layoutSticky();
+}
+
+/* 見出し行を積み重ねて固定し、縦表ではグループ列の幅だけ見出し列をずらす */
+function layoutSticky(){
+  const t = dom.table.querySelector('table.dt'); if (!t) return;
+  let top = 0;
+  t.querySelectorAll('thead tr').forEach(tr => {
+    tr.querySelectorAll('th').forEach(th => th.style.top = top + 'px');
+    top += tr.getBoundingClientRect().height;
+  });
+  const g = t.querySelector('tbody th.gname');
+  t.style.setProperty('--gw', g ? g.getBoundingClientRect().width + 'px' : '0px');
+}
+
+/* ======================================================================
+ * 描画：チェック結果（状態バー）
+ * ====================================================================== */
+/* 全組み合わせを走査し、どのルールにも当たらないもの／複数に当たるものを集める */
+function coverage(){
+  const C = state.conditions, total = comboTotal();
+  if (!C.length) return null;
+  if (total > MAX_ROWS) return { skipped:true, total };
+  const uncovered = [], dup = [];
+  for (const combo of cartesian(C.map(c => c.values))) {
+    const hits = [];
+    state.rows.forEach((r, i) => { if (C.every((c, k) => condVal(r, c) === DASH || condVal(r, c) === combo[k])) hits.push(i + 1); });
+    if (!hits.length) uncovered.push(combo); else if (hits.length > 1) dup.push({ combo, rows:hits });
+  }
+  return { total, uncovered, dup };
+}
+const comboStr = combo => state.conditions.map((c, i) => `${c.name}=${combo[i]}`).join(' / ');
+function badge(kind, label, details){
+  if (!details) return `<span class="badge ${kind}">${escH(label)}</span>`;
+  const items = details.slice(0, 40).map(d => `<li>${escH(d)}</li>`).join('') + (details.length > 40 ? `<li>…他 ${details.length - 40} 件</li>` : '');
+  return `<details class="badge ${kind}"><summary>${escH(label)}</summary><ul>${items}</ul></details>`;
+}
+function statusItems(){
+  const { rows:R, conditions:C, actions:A } = state;
+  const items = [];
+  const cov = coverage();
+  if (cov && cov.skipped) items.push(badge('', `組み合わせが多いため網羅チェックは省略（${cov.total} 通り）`));
+  else if (cov) {
+    if (!cov.uncovered.length && !cov.dup.length) items.push(badge('ok', `✔ 全 ${cov.total} 通りを重複なく網羅`));
+    if (cov.uncovered.length) items.push(badge('warn', `未カバー ${cov.uncovered.length} 通り`, cov.uncovered.map(comboStr)));
+    if (cov.dup.length) items.push(badge('warn', `重複 ${cov.dup.length} 通り`, cov.dup.map(d => `${comboStr(d.combo)}  →  R${d.rows.join(', R')}`)));
+  }
+  if (A.length) {
+    const empty = R.map((r, i) => (!r.na && A.every(a => !actVal(r, a).trim())) ? `R${i+1}` : null).filter(Boolean);
+    if (empty.length) items.push(badge('warn', `動作が未入力 ${empty.length} 件`, [empty.join(', ')]));
+  }
+  const bad = [];
+  R.forEach((r, i) => C.forEach(c => { const v = condVal(r, c); if (v !== DASH && !c.values.includes(v)) bad.push(`R${i+1} / ${c.name} = ${v}（値の定義にありません）`); }));
+  if (bad.length) items.push(badge('warn', `定義外の値 ${bad.length} 件`, bad));
+  const gs = condRuns().map(r => r.group).filter(Boolean);
+  const split = uniq(gs.filter((g, i) => gs.indexOf(g) !== i));
+  if (split.length) items.push(badge('warn', `離れているグループ ${split.length} 件`, split.map(g => `${g}　→　↑↓ で条件を隣り合わせにするとまとまります`)));
+  const na = R.filter(r => r.na).length;
+  items.push(badge('', `ルール ${R.length} 件${na ? `（N/A ${na}）` : ''}`));
+  items.push('<span class="selinfo" id="selInfo"></span>');
+  return items;
+}
+function renderStatus(){
+  dom.status.innerHTML = state.rows.length ? statusItems().join('') : '';
+  updateSelUI();
+}
+
+/* ======================================================================
+ * 出力：Markdown / CSV
+ * ====================================================================== */
+function matrixToMd(m){
+  const w = Array(m[0].length).fill(3);
+  m.forEach(r => r.forEach((c, i) => { w[i] = Math.max(w[i], dispW(c)); }));
+  const line = r => '| ' + r.map((c, i) => c + ' '.repeat(w[i] - dispW(c))).join(' | ') + ' |';
+  return [line(m[0]), '| ' + w.map(x => '-'.repeat(x)).join(' | ') + ' |', ...m.slice(1).map(line)].join('\n');
+}
+const noteOf = r => { const n = mdEsc(r.note); return r.na ? (n ? `N/A：${n}` : 'N/A（発生しない）') : n; };
+
+/* 表を 2 次元配列にする。Markdown は結合セルを持てないので、向きごとにグループの表し方を変える */
+function buildMatrix(layout){
+  const { conditions:C, actions:A, rows:R } = state;
+  const hasNote = R.some(r => r.na || (r.note || '').trim());
+  const groups = hasCondGroups();
+  if (layout === 'h') {
+    // 横表の見出しは1行しか持てないので、グループ名は列名の前に付ける
+    const cHead = c => mdEsc(groupOf(c) ? `${groupOf(c)} / ${c.name}` : c.name);
+    const head = ['#', ...C.map(cHead), ...A.map(a => mdEsc(a.name)), ...(hasNote ? ['備考'] : [])];
+    const body = R.map((r, i) => [
+      r.na ? `~~${i+1}~~` : String(i+1), ...C.map(c => mdEsc(condVal(r, c))), ...A.map(a => mdEsc(actVal(r, a))), ...(hasNote ? [noteOf(r)] : []),
+    ]);
+    return [head, ...body];
+  }
+  // 縦表はグループ名を左端の列に置き、2行目以降は空欄にして続きを示す
+  const lead = groups ? [''] : [];
+  const blankRow = R.map(() => '');
+  const out = [[...lead, '', ...R.map((r, i) => ruleLabel(i+1, r.na))]];
+  if (C.length) out.push(['**条件**', ...lead, ...blankRow]);
+  for (const run of condRuns()) run.items.forEach((c, k) => {
+    out.push([...(groups ? [k ? '' : mdEsc(run.group)] : []), mdEsc(c.name), ...R.map(r => mdEsc(condVal(r, c)))]);
+  });
+  if (A.length) out.push(['**動作 / 結果**', ...lead, ...blankRow]);
+  A.forEach(a => out.push([...lead, mdEsc(a.name), ...R.map(r => mdEsc(actVal(r, a)))]));
+  if (hasNote) out.push([...lead, '備考', ...R.map(noteOf)]);
+  return out;
+}
+function buildMarkdown(){
+  if (!state.rows.length) return '';
+  const parts = [matrixToMd(buildMatrix(state.layout))];
+  const legend = [];
+  if (state.rows.some(r => state.conditions.some(c => condVal(r, c) === DASH))) legend.push('`-` ：この条件は結果に影響しない（どちらでもよい）');
+  if (state.rows.some(r => r.na)) legend.push('`N/A` ：発生しない組み合わせ');
+  if (legend.length) parts.push('', ...legend.map(l => '- ' + l));
+  return parts.join('\n');
+}
+function buildCsv(){
+  if (!state.rows.length) return '';
+  const strip = s => String(s).replace(/\*\*(.*?)\*\*/g, '$1').replace(/~~(.*?)~~/g, '$1').replace(/\\\|/g, '|');
+  const esc = v => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  return buildMatrix(state.layout).map(r => r.map(c => esc(strip(c))).join(',')).join('\n');
+}
+function copyText(text, what){
+  if (!text) return toast('出力する表がありません');
+  const done = () => toast(`${what} をクリップボードにコピーしました。Notion のページにそのまま貼り付けできます`);
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed; top:-1000px; left:0; opacity:0;';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    ok ? done() : toast('コピーできませんでした。ブラウザのクリップボード権限を確認してください');
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+}
+
+/* ======================================================================
+ * 描画のまとめ
+ * ====================================================================== */
+function commit(){ renderTable(); renderStatus(); persist(); }          // 表に関わる変更のあと
+function commitSidebar(){ renderSidebar(); commit(); }                   // 条件・動作の定義が変わったあと
+function renderLayoutSeg(){ dom.layoutSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.layout === state.layout)); }
+function renderAll(){ dom.title.value = state.title || ''; renderLayoutSeg(); commitSidebar(); }
+const refreshTableSoon  = debounce(commit, 120);                                        // 名前を打っている間の再描画
+const refreshStatusSoon = debounce(() => { renderStatus(); persist(); }, 150);         // セルに文字を打っている間
+
+/* ======================================================================
+ * 操作：条件と動作の定義
+ * ====================================================================== */
+function reorder(arr, id, dir){
+  const i = arr.findIndex(x => x.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= arr.length) return;
+  snapshot(); [arr[i], arr[j]] = [arr[j], arr[i]]; commitSidebar();
+}
+/* 値の定義を変える。record は履歴に載せる関数（クリック操作なら snapshot、入力欄なら touchEdit） */
+function setConditionValues(id, vals, record){
+  const c = byId(state.conditions, id);
+  if (sameList(vals, c.values)) return false;
+  record(); c.values = vals; commitSidebar(); return true;
+}
+function setGroup(id, name){ recordEdit(); byId(state.conditions, id).group = name; commitSidebar(); }
+
+/* 完全に同じルールが残ったら 1 つにする（条件を削除したあとに使う） */
+function dedupeRows(){
+  const seen = new Set();
+  state.rows = state.rows.filter(r => {
+    const key = JSON.stringify([r.na, r.note || '', state.conditions.map(c => condVal(r, c)), state.actions.map(a => actVal(r, a))]);
+    if (seen.has(key)) return false; seen.add(key); return true;
+  });
+}
+function removeCondition(id){
+  snapshot();
+  state.conditions = state.conditions.filter(c => c.id !== id);
+  state.rows.forEach(r => delete r.cond[id]);
+  dedupeRows(); commitSidebar(); toast('条件を削除しました', true);
+}
+function removeAction(id){
+  snapshot();
+  state.actions = state.actions.filter(a => a.id !== id);
+  state.rows.forEach(r => delete r.act[id]);
+  commitSidebar(); toast('動作を削除しました', true);
+}
+/* 条件を追加する。ルールがあれば新しい条件の値ごとに複製して展開する（直前の条件のグループを引き継ぐ） */
+function addCondition(){
+  snapshot();
+  const last = state.conditions[state.conditions.length - 1];
+  const c = newCond(`条件${state.conditions.length + 1}`, last ? last.group || '' : '');
+  state.conditions.push(c);
+  if (state.rows.length && state.rows.length * c.values.length <= MAX_ROWS) {
+    state.rows = state.rows.flatMap(r => c.values.map((v, i) => { const nr = i === 0 ? r : cloneRow(r); nr.cond[c.id] = v; return nr; }));
+    toast(`条件を追加し、既存ルールを ${state.rows.length} 行に展開しました`, true);
+  } else {
+    state.rows.forEach(r => r.cond[c.id] = DASH);
+  }
+  commitSidebar(); focusField(`.item[data-id="${c.id}"] [data-role=cname]`);
+}
+function addAction(){
+  snapshot();
+  const a = newAct(`動作${state.actions.length + 1}`);
+  state.actions.push(a); state.rows.forEach(r => r.act[a.id] = '');
+  commitSidebar(); focusField(`.item[data-id="${a.id}"] [data-role=aname]`);
+}
+
+/* ======================================================================
+ * 操作：ルール
+ * ====================================================================== */
+function addRow(){
+  if (!state.conditions.length) return toast('先に条件を追加してください');
+  snapshot(); state.rows.push(newRow()); commit();
+  dom.table.scrollTo({ top:1e9, left:1e9 });
+}
+/* 全組み合わせを作り直す。既存ルールに当てはまる組み合わせは動作・N/A・備考を引き継ぐ */
+function generate(){
+  if (!state.conditions.length) return toast('条件を1つ以上追加してください');
+  const total = comboTotal();
+  if (total > MAX_ROWS) return toast(`組み合わせが ${total} 通りあります。${MAX_ROWS} 通り以下になるよう条件を減らしてください`);
+  snapshot();
+  const old = state.rows;
+  state.rows = cartesian(state.conditions.map(c => c.values)).map(combo => {
+    const r = newRow();
+    state.conditions.forEach((c, i) => r.cond[c.id] = combo[i]);
+    const m = old.find(o => state.conditions.every(c => condVal(o, c) === DASH || condVal(o, c) === condVal(r, c)));
+    if (m) { state.actions.forEach(a => r.act[a.id] = actVal(m, a)); r.na = m.na; r.note = m.note || ''; }
+    return r;
+  });
+  selected.clear(); commit();
+  toast(`${state.rows.length} 行を生成しました${old.length ? '（入力済みの動作は引き継ぎました）' : ''}`, true);
+}
+function deleteRows(){
+  const s = needSel(); if (!s) return;
+  snapshot(); state.rows = state.rows.filter(r => !selected.has(r.id)); selected.clear(); commit();
+  toast(`${s.length} 件のルールを削除しました`, true);
+}
+/* 選んだルールがすべて N/A なら解除、そうでなければ N/A にする */
+function toggleNa(){
+  const s = needSel(); if (!s) return;
+  const off = s.every(r => r.na);
+  snapshot(); s.forEach(r => r.na = !off); commit();
+}
+/* 選んだルールを前後へ動かす。隣が未選択のときだけ入れ替えるので、まとめて選んでも順序は崩れない */
+function moveSel(dir){
+  if (!needSel()) return;
+  snapshot(); const R = state.rows;
+  if (dir < 0) { for (let i = 1; i < R.length; i++) if (selected.has(R[i].id) && !selected.has(R[i-1].id)) [R[i-1], R[i]] = [R[i], R[i-1]]; }
+  else { for (let i = R.length - 2; i >= 0; i--) if (selected.has(R[i].id) && !selected.has(R[i+1].id)) [R[i], R[i+1]] = [R[i+1], R[i]]; }
+  commit();
+}
+function toggleSelectAll(){
+  if (!state.rows.length) return toast('ルールがありません');
+  const all = selected.size === state.rows.length;
+  selected.clear();
+  if (!all) state.rows.forEach(r => selected.add(r.id));
+  renderTable();
+}
+/* 動作・備考・他の条件が同じで、ある条件の値だけがそろって出そろっているルール群を「-」1 行にまとめる。まとまらなくなるまで繰り返す */
+function simplifyRows(){
+  if (!state.rows.length) return toast('ルールがありません');
+  const before = state.rows.length, json = JSON.stringify(state);
+  const mergeOnce = () => {
+    for (const c of state.conditions) {
+      const groups = new Map();
+      for (const r of state.rows) {
+        if (condVal(r, c) === DASH) continue;
+        const key = JSON.stringify([r.na, r.note || '', state.actions.map(a => actVal(r, a)), state.conditions.filter(x => x !== c).map(x => condVal(r, x))]);
+        (groups.get(key) || groups.set(key, []).get(key)).push(r);
+      }
+      for (const grp of groups.values()) {
+        const vals = new Set(grp.map(r => r.cond[c.id]));
+        if (!c.values.every(v => vals.has(v))) continue;
+        grp[0].cond[c.id] = DASH;
+        const drop = new Set(grp.slice(1).map(r => r.id));
+        state.rows = state.rows.filter(r => !drop.has(r.id));
+        return true;
+      }
+    }
+    return false;
+  };
+  while (mergeOnce()) {}
+  if (state.rows.length === before) return toast('まとめられるルールはありませんでした');
+  pushUndo(json); selected.clear(); commit();
+  toast(`${before} 行 → ${state.rows.length} 行にまとめました`, true);
+}
+
+/* ルールのコピーと貼り付け（このツールの中だけで働く） */
+let rowClip = [];
+function copyRows(){
+  const s = selRows();
+  if (!s.length) return toast('コピーするルールを選択してください');
+  rowClip = s.map(r => ({ cond:{ ...r.cond }, act:{ ...r.act }, na:r.na, note:r.note || '' }));
+  toast(`${rowClip.length} 件のルールをコピーしました（${modKey} + V で貼り付け）`);
+}
+function pasteRows(){
+  if (!rowClip.length) return toast(`先に ${modKey} + C でルールをコピーしてください`);
+  snapshot();
+  const copies = rowClip.map(cloneRow);
+  const s = selRows();
+  state.rows.splice(s.length ? state.rows.indexOf(s[s.length - 1]) + 1 : state.rows.length, 0, ...copies);
+  selected = new Set(copies.map(r => r.id)); commit();
+  toast(`${copies.length} 件のルールを貼り付けました`, true);
+}
+
+/* セルのプルダウンは表を作り直さず、その場だけ更新してフォーカスを保つ */
+function onCellSelect(sel){
+  const r = byId(state.rows, +sel.dataset.rid); if (!r) return;
+  const v = sel.value;
+  snapshot();
+  let cls;
+  if (sel.dataset.cid) { r.cond[+sel.dataset.cid] = v; cls = v === DASH ? 'dash' : ''; }
+  else { r.act[+sel.dataset.aid] = v; cls = markClass(v); }
+  sel.className = cellClass(cls);
+  renderStatus(); persist();
+}
+function onCellInput(el){
+  const r = byId(state.rows, +el.dataset.rid); if (!r) return;
+  touchEdit();
+  if (el.dataset.aid) { r.act[+el.dataset.aid] = el.value; el.className = cellClass(markClass(el.value)); }
+  else r.note = el.value;
+  refreshStatusSoon();
+}
+
+/* ======================================================================
+ * 直接入力とプルダウンを兼ねた欄
+ *   入力欄はそのまま打てる。▾ や ↓ キーで候補の一覧を出し、選ぶと欄に入る。
+ *   一覧は画面に1つだけ持ち、開くときに中身と位置を作り直す。
+ * ====================================================================== */
+let comboInput = null;
+
+function closeCombo(){
+  if (!comboInput) return;
+  comboInput.setAttribute('aria-expanded', 'false');
+  dom.comboMenu.hidden = true;
+  dom.comboMenu.innerHTML = '';
+  comboInput = null;
+}
+function openCombo(input, options, onPick){
+  closeCombo();
+  if (!options.length) return;
+  comboInput = input;
+  input.setAttribute('aria-expanded', 'true');
+  const menu = dom.comboMenu;
+  menu.innerHTML = options.map((o, i) =>
+    `<button type="button" role="option" data-i="${i}"${o.value === input.value ? ' class="cur"' : ''}>${escH(o.label)}</button>`).join('');
+  menu.hidden = false;
+  const r = input.getBoundingClientRect();
+  menu.style.cssText = `min-width:${r.width}px; left:0; top:0`;
+  const mh = menu.offsetHeight, mw = menu.offsetWidth;
+  const fitsBelow = window.innerHeight - r.bottom >= mh + 8;
+  menu.style.top = (fitsBelow || r.top < mh + 8 ? r.bottom + 4 : r.top - mh - 4) + 'px';
+  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + 'px';
+  menu.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    const v = options[+b.dataset.i].value;
+    closeCombo(); onPick(v);
+  }));
+}
+/* 欄の種類（動作セルか、条件のグループ欄か）を見て、候補と反映先を決める */
+function openComboFor(input){
+  if (input.dataset.aid) {
+    const a = byId(state.actions, +input.dataset.aid), r = byId(state.rows, +input.dataset.rid);
+    if (!a || !r) return;
+    openCombo(input, actionOptions(a), v => {
+      recordEdit();
+      r.act[a.id] = v; input.value = v; input.className = cellClass(markClass(v)); input.focus();
+      renderStatus(); persist();
+    });
+  } else if (input.dataset.role === 'cgroup') {
+    const item = input.closest('.item'); if (!item) return;
+    const id = +item.dataset.id;
+    openCombo(input, groupOptions(), v => { setGroup(id, v); focusField(`.item[data-id="${id}"] [data-role=cgroup]`); });
+  }
+}
+function moveComboFocus(step){
+  const btns = [...dom.comboMenu.querySelectorAll('button')];
+  if (!btns.length) return;
+  const i = btns.indexOf(document.activeElement);
+  btns[(i + step + btns.length) % btns.length].focus();
+}
+
+/* ======================================================================
+ * 操作：ファイル
+ * ====================================================================== */
+function saveJson(){
+  const json = JSON.stringify(state, null, 2);
+  const name = `${(state.title || '').trim().replace(/[\\/:*?"<>|]/g, '_').slice(0, 80) || 'decision-table'}.json`;
+  try {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], { type:'application/json' })); a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch (e) {}
+  const downloaded = `${name} をダウンロードしました`;
+  if (navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(json).then(() => toast(`${name} をダウンロードし、同じ内容をクリップボードにもコピーしました`), () => toast(downloaded));
+  else toast(downloaded);
+}
+function loadJsonFile(file){
+  const rd = new FileReader();
+  rd.onload = () => {
+    const s = (() => { try { return validate(JSON.parse(rd.result)); } catch (e) { return null; } })();
+    if (s) replaceState(s, `${file.name} を読み込みました`);
+    else toast('このファイルは読み込めません。このツールで保存した JSON を選んでください');
+  };
+  rd.readAsText(file);
+}
+
+/* ======================================================================
+ * テーマ（自動 → ライト → ダーク）
+ * ====================================================================== */
+const root = document.documentElement;
+const hostTheme = root.getAttribute('data-host-theme') || '';
+const THEMES = [
+  { id:'auto',  label:'自動',   ic:'◐', title:'表示テーマ：端末の設定に従う（クリックでライトへ）' },
+  { id:'light', label:'ライト', ic:'☀', title:'表示テーマ：ライト（クリックでダークへ）' },
+  { id:'dark',  label:'ダーク', ic:'☾', title:'表示テーマ：ダーク（クリックで自動へ）' },
+];
+let themeMode = 'auto';
+let themeGuard = null;   // 表示側が data-theme を上書きしても、選んだテーマを保つ監視
+
+function applyTheme(){
+  const t = THEMES.find(x => x.id === themeMode) || THEMES[0];
+  themeMode = t.id;
+  if (themeGuard) { themeGuard.disconnect(); themeGuard = null; }
+  if (themeMode === 'auto') {
+    if (hostTheme) root.setAttribute('data-theme', hostTheme); else root.removeAttribute('data-theme');
+  } else {
+    root.setAttribute('data-theme', themeMode);
+    themeGuard = new MutationObserver(() => {
+      if (root.getAttribute('data-theme') === themeMode) return;
+      themeGuard.disconnect();
+      root.setAttribute('data-theme', themeMode);
+      themeGuard.observe(root, { attributes:true, attributeFilter:['data-theme'] });
+    });
+    themeGuard.observe(root, { attributes:true, attributeFilter:['data-theme'] });
+  }
+  dom.themeBtn.innerHTML = `<span class="ic">${t.ic}</span>${t.label}`;
+  dom.themeBtn.title = t.title;
+  dom.themeBtn.setAttribute('aria-label', `表示テーマ：${t.label}。クリックで切り替え`);
+}
+function cycleTheme(){
+  themeMode = THEMES[(THEMES.findIndex(x => x.id === themeMode) + 1) % THEMES.length].id;
+  try { localStorage.setItem(THEME_KEY, themeMode); } catch (e) {}
+  applyTheme();
+  toast(`表示テーマを「${THEMES.find(x => x.id === themeMode).label}」にしました`);
+}
+
+/* ======================================================================
+ * ショートカット一覧
+ * ====================================================================== */
+const isMac = /Mac|iPhone|iPad|iPod/.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent);
+const modKey = isMac ? '⌘' : 'Ctrl';
+const KEYS = [
+  ['元に戻す', 'Ctrl + Z', '⌘ + Z'],
+  ['やり直す', 'Ctrl + Shift + Z　または　Ctrl + Y', '⌘ + Shift + Z'],
+  ['選んだルールをコピー', 'Ctrl + C', '⌘ + C'],
+  ['コピーしたルールを貼り付け', 'Ctrl + V', '⌘ + V'],
+  ['選んだルールを前へ／後ろへ', 'Ctrl + Shift + ← / →', '⌘ + Shift + ← / →'],
+  ['ルールを続けて選ぶ', 'Shift + クリック', 'Shift + クリック'],
+  ['選択を解除', 'Esc', 'Esc'],
+  ['この一覧を開く', '?', '?'],
+];
+function renderKeys(){
+  const col = (label, mine) => `<th class="${mine ? 'here' : ''}">${label}${mine ? ' （このPC）' : ''}</th>`;
+  dom.keysHead.innerHTML = `<tr><th>操作</th>${col('Windows', !isMac)}${col('Mac', isMac)}</tr>`;
+  dom.keysBody.innerHTML = KEYS.map(([label, win, mac]) =>
+    `<tr><td>${escH(label)}</td><td class="k ${isMac ? '' : 'here'}">${escH(win)}</td><td class="k ${isMac ? 'here' : ''}">${escH(mac)}</td></tr>`).join('');
+}
+function openKeys(){ if (dom.keysDlg.showModal && !dom.keysDlg.open) dom.keysDlg.showModal(); }
+
+/* ======================================================================
+ * イベント接続
+ * ====================================================================== */
+/* サイドバーの操作は data-role で振り分ける。第1引数は属する条件／動作の id */
+const sidebarOn = {
+  click: {
+    preset:  (id, btn) => setConditionValues(id, parseValues(btn.dataset.vals), snapshot),
+    cdel:    id => removeCondition(id),
+    adel:    id => removeAction(id),
+    cup:     id => reorder(state.conditions, id, -1),
+    cdown:   id => reorder(state.conditions, id, 1),
+    aup:     id => reorder(state.actions, id, -1),
+    adown:   id => reorder(state.actions, id, 1),
+  },
+  input: {
+    cname:  (id, el) => { touchEdit(); byId(state.conditions, id).name = el.value; refreshTableSoon(); },
+    aname:  (id, el) => { touchEdit(); byId(state.actions, id).name = el.value; refreshTableSoon(); },
+    cgroup: (id, el) => { touchEdit(); byId(state.conditions, id).group = el.value; el.closest('.item').classList.toggle('grouped', !!el.value.trim()); refreshTableSoon(); },
+  },
+  change: {
+    cvals:  (id, el) => { if (!setConditionValues(id, parseValues(el.value), touchEdit)) el.value = byId(state.conditions, id).values.join(', '); },
+    cgroup: () => commitSidebar(),     // 入力が終わったら候補の一覧を作り直す
+  },
+};
+function dispatchSidebar(kind, e){
+  const el = kind === 'click' ? e.target.closest('button[data-role]') : e.target;
+  const fn = el && sidebarOn[kind][el.dataset.role]; if (!fn) return;
+  const item = el.closest('.item');
+  fn(item ? +item.dataset.id : null, el);
+}
+
+function onKeydown(e){
+  if (dom.keysDlg.open) return;                         // 一覧を開いている間は Esc で閉じるだけにする
+  const inText = e.target.matches('input[type=text], textarea');
+  if (!(e.ctrlKey || e.metaKey)) {
+    if (e.key === 'Escape' && selected.size) { selected.clear(); renderTable(); }
+    else if (e.key === '?' && !inText) { e.preventDefault(); openKeys(); }
+    return;
+  }
+  if (inText) return;                                   // 文字を入力している間は本来の編集操作にゆずる
+  if (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); return moveSel(e.key === 'ArrowLeft' ? -1 : 1); }
+  const actions = { z: () => e.shiftKey ? redo() : undo(), y: redo, c: copyRows, v: pasteRows };
+  const k = e.key.toLowerCase();
+  if (Object.hasOwn(actions, k)) { e.preventDefault(); actions[k](); }
+}
+
+function bindEvents(){
+  const on = (sel, ev, fn) => $(sel).addEventListener(ev, fn);
+
+  // ヘッダー
+  dom.title.addEventListener('focus', beginEdit);
+  dom.title.addEventListener('input', e => { touchEdit(); state.title = e.target.value; persist(); });
+  on('#sampleBtn', 'click', () => replaceState(sample(), 'サンプルを読み込みました'));
+  on('#newBtn', 'click', () => replaceState(starter(), '新しい表を作成しました'));
+  on('#saveJsonBtn', 'click', saveJson);
+  on('#loadJsonBtn', 'click', () => dom.jsonFile.click());
+  dom.jsonFile.addEventListener('change', e => { const f = e.target.files[0]; if (f) loadJsonFile(f); e.target.value = ''; });
+  on('#keysBtn', 'click', openKeys);
+  dom.keysDlg.addEventListener('click', e => { if (e.target === dom.keysDlg) dom.keysDlg.close(); });
+  dom.themeBtn.addEventListener('click', cycleTheme);
+
+  // サイドバー
+  ['click', 'input', 'change'].forEach(kind => dom.sidebar.addEventListener(kind, e => dispatchSidebar(kind, e)));
+  dom.sidebar.addEventListener('focusin', e => { if (e.target.matches('input[type=text]')) beginEdit(); });
+  on('#addConditionBtn', 'click', addCondition);
+  on('#addActionBtn', 'click', addAction);
+  on('#addRowBtn', 'click', addRow);
+  on('#generateBtn', 'click', generate);
+
+  // ツールバー
+  dom.layoutSeg.addEventListener('click', e => {
+    const b = e.target.closest('button[data-layout]'); if (!b || b.dataset.layout === state.layout) return;
+    state.layout = b.dataset.layout; renderLayoutSeg(); renderTable(); persist();
+  });
+  dom.naBtn.addEventListener('click', toggleNa);
+  on('#deleteBtn', 'click', deleteRows);
+  on('#simplifyBtn', 'click', simplifyRows);
+  dom.selToggle.addEventListener('click', toggleSelectAll);
+  on('#copyMdBtn', 'click', () => copyText(buildMarkdown(), 'Markdown'));
+  on('#copyCsvBtn', 'click', () => copyText(buildCsv(), 'CSV'));
+
+  // 表
+  dom.table.addEventListener('click', e => {
+    const cb = e.target.closest('.rowsel');
+    if (cb) {
+      const id = +cb.dataset.rid;
+      if (e.shiftKey && lastClickedRow !== null) selectRange(id, cb.checked); else setSelected(id, cb.checked);
+      lastClickedRow = id; updateSelUI(); return;
+    }
+    if (e.target.id === 'selAllChk') { state.rows.forEach(r => setSelected(r.id, e.target.checked)); updateSelUI(); }
+  });
+  dom.table.addEventListener('focusin', e => { if (e.target.matches('input.cell')) beginEdit(); });
+  dom.table.addEventListener('input', e => { if (e.target.matches('input.cell')) onCellInput(e.target); });
+  dom.table.addEventListener('change', e => { const sel = e.target.closest('select.cell'); if (sel) onCellSelect(sel); });
+
+  // 直接入力＋プルダウンの欄
+  document.addEventListener('click', e => {
+    const caret = e.target.closest && e.target.closest('.combobox .caret');
+    if (!caret) return;
+    e.preventDefault();
+    const input = caret.previousElementSibling;
+    if (comboInput === input) closeCombo(); else openComboFor(input);
+  });
+  document.addEventListener('mousedown', e => {
+    if (comboInput && !dom.comboMenu.contains(e.target) && !(e.target.closest && e.target.closest('.combobox'))) closeCombo();
+  });
+  document.addEventListener('keydown', e => {
+    if (!(e.target.matches && e.target.matches('.combobox > input')) || e.key !== 'ArrowDown') return;
+    e.preventDefault(); openComboFor(e.target);
+    const first = dom.comboMenu.querySelector('button'); if (first) first.focus();
+  });
+  dom.comboMenu.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); moveComboFocus(e.key === 'ArrowDown' ? 1 : -1); }
+    else if (e.key === 'Escape') { e.preventDefault(); const t = comboInput; closeCombo(); if (t) t.focus(); }
+  });
+  window.addEventListener('scroll', closeCombo, true);
+
+  // 全体
+  document.addEventListener('keydown', onKeydown);
+  window.addEventListener('resize', debounce(() => { closeCombo(); layoutSticky(); }, 150));
+}
+
+/* ======================================================================
+ * 起動
+ * ====================================================================== */
+try { const saved = localStorage.getItem(THEME_KEY); if (THEMES.some(x => x.id === saved)) themeMode = saved; } catch (e) {}
+applyTheme();
+renderKeys();
+bindEvents();
+state = load(); fixUid(); renderAll();
+})();
+</script>
+</body>
+</html>
