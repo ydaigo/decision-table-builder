@@ -236,7 +236,11 @@
   input.cell::placeholder{color:var(--line);}
   input.cell:hover, input.cell:focus{border-bottom-style:solid;}
   .cell:hover{border-color:var(--line); background:var(--panel);}
-  .cell:focus{outline:none; border-color:var(--cond-accent); background:var(--panel);}
+  .cell:focus{outline:none; border-color:var(--cond-accent); background:var(--panel); border-bottom-style:solid;}
+  /* 移動モード：セルが選ばれているだけの状態。入力モードになると .editing が付く */
+  .dt .cell:focus:not(.editing){background:var(--sel); box-shadow:inset 0 0 0 1px var(--cond-accent); caret-color:transparent;}
+  .dt input.cell[readonly]{cursor:default;}
+  .dt .cell.editing{background:var(--panel); box-shadow:none;}
   .cell.dash{color:var(--sub);}
   .cell.on{color:var(--act-accent); font-weight:600;}
   .cell.off{color:var(--sub);}
@@ -365,7 +369,7 @@
       表の条件セルはプルダウンで選びます。列見出しに選べる値が並ぶので、そこを見れば何を入れられるか分かります。<br>
       「-」は「この条件は結果に影響しない」の意味です。<br>
       動作のセルとグループ欄は、直接入力しても、右の ▾ から候補を選んでも構いません。動作の候補には ○ / × と、その列ですでに使った値が並びます。<br>
-      キーボードだけでも完結します。<kbd>↓</kbd> で候補を開き、<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> で決定。閉じているときの <kbd>Enter</kbd> は同じ欄のまま次のルールへ移ります。<br>
+      表のセルには移動モードと入力モードがあります（Notion と同じ考え方）。青く塗られているときは矢印でセルを移り、<kbd>Enter</kbd> で入力モードに入ります。白くなったら文字を打て、<kbd>Esc</kbd> で移動モードに戻ります。<br>
       条件を後から追加すると既存のルールが自動で展開され、再生成しても入力済みの動作は引き継がれます。<br>
       元に戻す・コピー・貼り付けはショートカットキーで行えます。一覧は右上の「ショートカット」または <kbd>?</kbd> で開きます。<br>
       編集内容はこのブラウザに自動保存されます。
@@ -632,6 +636,7 @@ function toast(msg, withUndo){
 function comboField(attrs, value, cls, opt = {}){
   return `<span class="combobox">`
     + `<input type="text"${cls ? ` class="${cls}"` : ''} value="${escH(value)}" ${attrs} autocomplete="off"`
+    + (opt.readonly ? ' readonly' : '')
     + ` role="combobox" aria-expanded="false" aria-autocomplete="list"`
     + (opt.placeholder ? ` placeholder="${escH(opt.placeholder)}"` : '')
     + (opt.label ? ` aria-label="${escH(opt.label)}"` : '')
@@ -701,6 +706,8 @@ const minW = list => `min-width:calc(${Math.max(2, ...list.map(dispW))}ch + 3em)
 const valHint = c => `<span class="vhint">${c.values.slice(0, 5).map(escH).join(' / ')}${c.values.length > 5 ? ' …' : ''} / ${DASH}</span>`;
 const markClass = v => v === '○' ? 'on' : v === '×' ? 'off' : '';
 const cellClass = cls => 'cell' + (cls ? ' ' + cls : '');
+/* 値に応じてクラスを付け直す。入力モードの印だけは消さずに残す */
+const setCellClass = (el, cls) => { el.className = cellClass(cls) + (inputCell === el ? ' editing' : ''); };
 
 function selectCell(cls, list, data, name, hint, label){
   const v = data.value;
@@ -713,11 +720,11 @@ function condCell(r, c){
 function actCell(r, a){
   const v = actVal(r, a);
   return comboField(`data-rid="${r.id}" data-aid="${a.id}"`, v, cellClass(markClass(v)), {
-    placeholder:'自由入力', label:a.name,
-    title:`${a.name}　そのまま入力できます。▾ または ↓ キーで ○ / × やこの列で使った値を選べます。Enter で次のルールへ`,
+    placeholder:'自由入力', label:a.name, readonly:true,
+    title:`${a.name}　Enter で入力モード、Esc で移動モード。入力モード中は ▾ や ↓ で ○ / × やこの列で使った値を選べます`,
   });
 }
-const noteCell = r => `<input type="text" class="cell note" value="${escH(r.note || '')}" data-rid="${r.id}" placeholder="備考を自由入力" aria-label="備考">`;
+const noteCell = r => `<input type="text" class="cell note" value="${escH(r.note || '')}" data-rid="${r.id}" placeholder="備考" aria-label="備考" title="Enter で入力モード、Esc で移動モード" readonly>`;
 
 const rowCls   = r => `${r.na ? 'na' : ''} ${selected.has(r.id) ? 'sel' : ''}`.trim();
 const ruleChk  = (r, i) => `<input type="checkbox" class="rowsel" data-rid="${r.id}"${selected.has(r.id) ? ' checked' : ''} aria-label="ルール ${i+1} を選択">`;
@@ -775,6 +782,7 @@ function tableV(C, A, R){
 }
 
 function renderTable(){
+  inputCell = null; closeCombo();          // 作り直すと元の要素は消えるので、モードも畳む
   const { conditions:C, actions:A, rows:R } = state;
   if (!C.length && !A.length) { dom.table.innerHTML = emptyMsg('左のパネルで条件と動作を追加してください'); return; }
   if (!R.length) { dom.table.innerHTML = emptyMsg('「全組み合わせで表を生成」を押すとルールが作られます<br><span style="font-size:12px">必要なルールだけ手で作る場合は「空のルールを1行追加」</span>'); return; }
@@ -1084,16 +1092,14 @@ function onCellSelect(sel){
   const r = byId(state.rows, +sel.dataset.rid); if (!r) return;
   const v = sel.value;
   snapshot();
-  let cls;
-  if (sel.dataset.cid) { r.cond[+sel.dataset.cid] = v; cls = v === DASH ? 'dash' : ''; }
-  else { r.act[+sel.dataset.aid] = v; cls = markClass(v); }
-  sel.className = cellClass(cls);
+  r.cond[+sel.dataset.cid] = v;
+  setCellClass(sel, v === DASH ? 'dash' : '');
   renderStatus(); persist();
 }
 function onCellInput(el){
   const r = byId(state.rows, +el.dataset.rid); if (!r) return;
   touchEdit();
-  if (el.dataset.aid) { r.act[+el.dataset.aid] = el.value; el.className = cellClass(markClass(el.value)); }
+  if (el.dataset.aid) { r.act[+el.dataset.aid] = el.value; setCellClass(el, markClass(el.value)); }
   else r.note = el.value;
   refreshStatusSoon();
 }
@@ -1161,7 +1167,7 @@ function openComboFor(input){
     if (!a || !r) return;
     openCombo(input, actionOptions(a), v => {
       recordEdit();
-      r.act[a.id] = v; input.value = v; input.className = cellClass(markClass(v)); input.focus();
+      r.act[a.id] = v; input.value = v; setCellClass(input, markClass(v)); input.focus();
       renderStatus(); persist();
     });
   } else if (input.dataset.role === 'cgroup') {
@@ -1170,14 +1176,15 @@ function openComboFor(input){
     openCombo(input, groupOptions(), v => { setGroup(id, v); focusField(`.item[data-id="${id}"] [data-role=cgroup]`); });
   }
 }
-/* ---- 表とサイドバーのキーボード操作 ---- */
-/* 候補を開いている間のキーは、ほかの処理より先に受け取る（取り込み口は capture 相） */
+/* ---- キーボード操作 ---- */
+/* 候補を開いている間のキーは、ほかの処理より先に受け取る（capture 相で登録する） */
 function onComboKeydown(e){
   const el = e.target;
   if (!(el.matches && el.matches('.combobox > input'))) return;
   const stop = () => { e.preventDefault(); e.stopPropagation(); };
   if (comboInput !== el) {
-    if (e.key === 'ArrowDown' || e.key === 'F4') { stop(); openComboFor(el); }
+    // 移動モード（readonly）のときは ↓ をセル移動に使うので、候補は開かない
+    if (!el.readOnly && (e.key === 'ArrowDown' || e.key === 'F4')) { stop(); openComboFor(el); }
     return;
   }
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { stop(); moveCombo(e.key === 'ArrowDown' ? 1 : -1); }
@@ -1185,25 +1192,70 @@ function onComboKeydown(e){
   else if (e.key === 'Escape') { stop(); closeCombo(); }
   else if (e.key === 'Tab') closeCombo();     // フォーカス移動はそのまま通す
 }
-/* 同じ欄のまま、次／前のルールへ移る（列を上から順に埋めるとき用） */
-function focusSiblingCell(el, step){
-  const i = state.rows.findIndex(r => r.id === +el.dataset.rid);
-  const next = state.rows[i + step]; if (!next) return;
-  const at = `[data-rid="${next.id}"]`;
-  const sel = el.dataset.aid ? `${at}[data-aid="${el.dataset.aid}"]`
-            : el.dataset.cid ? `${at}[data-cid="${el.dataset.cid}"]`
-            : `input.note${at}`;
-  const t = dom.table.querySelector(sel); if (!t) return;
-  t.focus();
-  if (t.tagName === 'INPUT') t.select();
-  if (t.scrollIntoView) t.scrollIntoView({ block:'nearest', inline:'nearest' });
+
+/* ----------------------------------------------------------------------
+ * 表のセルは移動モードと入力モードの 2 つを持つ（Notion と同じ考え方）
+ *   移動モード … 矢印でセルを移る。入力欄は readonly
+ *   入力モード … Enter か文字入力で入る。矢印は文字カーソル。Esc で戻る
+ * -------------------------------------------------------------------- */
+let inputCell = null;
+
+function enterInputMode(el, selectAll){
+  if (!el || inputCell === el) return;
+  leaveInputMode();
+  inputCell = el;
+  el.classList.add('editing');
+  if (el.tagName === 'INPUT') { el.removeAttribute('readonly'); if (selectAll) el.select(); }
 }
+function leaveInputMode(){
+  if (!inputCell) return;
+  closeCombo();
+  inputCell.classList.remove('editing');
+  if (inputCell.tagName === 'INPUT') inputCell.setAttribute('readonly', '');
+  inputCell = null;
+}
+/* tbody の行と、その中のセルを並べた格子。縦表でも横表でも「行が見た目の行」になる */
+function cellGrid(){
+  return [...dom.table.querySelectorAll('tbody tr')]
+    .map(tr => [...tr.querySelectorAll('.cell')]).filter(cells => cells.length);
+}
+/* 格子の中で el の隣を返す。端では動かない（行き止まりなら null） */
+function nextCell(grid, el, dRow, dCol){
+  let r = -1, c = -1;
+  grid.forEach((row, i) => { const j = row.indexOf(el); if (j >= 0) { r = i; c = j; } });
+  if (r < 0) return null;
+  const clamp = (v, n) => Math.max(0, Math.min(n - 1, v));
+  const row = grid[clamp(r + dRow, grid.length)];
+  const next = row && row[clamp(c + dCol, row.length)];
+  return next && next !== el ? next : null;
+}
+function moveCell(el, dRow, dCol){
+  const next = nextCell(cellGrid(), el, dRow, dCol); if (!next) return;
+  leaveInputMode();
+  next.focus();
+  if (next.scrollIntoView) next.scrollIntoView({ block:'nearest', inline:'nearest' });
+}
+const ARROWS = { ArrowUp:[-1, 0], ArrowDown:[1, 0], ArrowLeft:[0, -1], ArrowRight:[0, 1] };
+
 function onTableKeydown(e){
   const el = e.target;
-  if (e.key !== 'Enter' || comboInput === el) return;
-  if (!(el.matches && el.matches('.cell'))) return;
-  e.preventDefault();
-  focusSiblingCell(el, e.shiftKey ? -1 : 1);
+  if (!(el.matches && el.matches('.cell')) || comboInput === el) return;
+  const inEdit = inputCell === el;
+  const stop = () => { e.preventDefault(); e.stopPropagation(); };
+
+  if (e.key === 'Escape') { if (inEdit) { stop(); leaveInputMode(); } return; }
+  if (e.key === 'Enter') {
+    stop();
+    if (!inEdit) return enterInputMode(el, true);
+    leaveInputMode();
+    moveCell(el, e.shiftKey ? -1 : 1, 0);       // 確定して上下の隣のセルへ
+    return;
+  }
+  if (inEdit) return;                            // 入力モードでは矢印は文字カーソルに任せる
+  const d = ARROWS[e.key];
+  if (d) { stop(); return moveCell(el, d[0], d[1]); }
+  // 移動モードのまま文字を打ったら、そのまま入力モードに入って打ち始められる
+  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) enterInputMode(el, true);
 }
 
 /* ======================================================================
@@ -1280,14 +1332,17 @@ const isMac = /Mac|iPhone|iPad|iPod/.test((navigator.userAgentData && navigator.
 const modKey = isMac ? '⌘' : 'Ctrl';
 /* ['#', 見出し] は区切り行。それ以外は [操作, Windows, Mac] */
 const KEYS = [
-  ['#', '表のセル（マウスなしで完結します）'],
-  ['文字を入れる', 'そのまま入力', 'そのまま入力'],
+  ['#', '表のセル：移動モード（セルが青く塗られている状態）'],
+  ['セルを移る', '↑ ↓ ← →', '↑ ↓ ← →'],
+  ['入力モードに入る', 'Enter　または　そのまま文字を打つ', 'Enter　または　そのまま文字を打つ'],
+  ['隣の欄へ', 'Tab / Shift + Tab', 'Tab / Shift + Tab'],
+  ['#', '表のセル：入力モード（白くなり文字カーソルが出ている状態）'],
+  ['移動モードに戻る', 'Esc', 'Esc'],
+  ['確定して下／上のセルへ', 'Enter / Shift + Enter', 'Enter / Shift + Enter'],
   ['動作セルの候補を開く', '↓　または　F4', '↓'],
   ['候補を選ぶ', '↑ / ↓', '↑ / ↓'],
   ['候補を決める', 'Enter', 'Enter'],
-  ['候補を閉じる', 'Esc', 'Esc'],
-  ['同じ欄のまま次／前のルールへ', 'Enter / Shift + Enter', 'Enter / Shift + Enter'],
-  ['隣の欄へ', 'Tab / Shift + Tab', 'Tab / Shift + Tab'],
+  ['候補だけ閉じる', 'Esc', 'Esc'],
   ['#', 'ルールの操作'],
   ['元に戻す', 'Ctrl + Z', '⌘ + Z'],
   ['やり直す', 'Ctrl + Shift + Z　または　Ctrl + Y', '⌘ + Shift + Z'],
@@ -1396,9 +1451,14 @@ function bindEvents(){
       if (e.shiftKey && lastClickedRow !== null) selectRange(id, cb.checked); else setSelected(id, cb.checked);
       lastClickedRow = id; updateSelUI(); return;
     }
-    if (e.target.id === 'selAllChk') { state.rows.forEach(r => setSelected(r.id, e.target.checked)); updateSelUI(); }
+    if (e.target.id === 'selAllChk') { state.rows.forEach(r => setSelected(r.id, e.target.checked)); updateSelUI(); return; }
+    // マウスで触ったセルは、そのまま入力モードにする
+    const box = e.target.closest('.combobox');
+    const cell = e.target.closest('.cell') || (box && box.querySelector('.cell'));
+    if (cell) enterInputMode(cell, false);
   });
   dom.table.addEventListener('focusin', e => { if (e.target.matches('input.cell')) beginEdit(); });
+  dom.table.addEventListener('focusout', e => { if (inputCell === e.target) leaveInputMode(); });
   dom.table.addEventListener('input', e => { if (e.target.matches('input.cell')) onCellInput(e.target); });
   dom.table.addEventListener('change', e => { const sel = e.target.closest('select.cell'); if (sel) onCellSelect(sel); });
   dom.table.addEventListener('keydown', onTableKeydown);
