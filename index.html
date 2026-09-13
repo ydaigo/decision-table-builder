@@ -4,47 +4,49 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Decision Table Builder</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-  /* ========== 配色（ライト基準。ダークは同じトークンを上書き） ========== */
+  /* ========== 配色（Notion に合わせる。ライト基準、ダークは同じトークンを上書き） ========== */
   :root{
     color-scheme: light dark;
-    --bg:#f5f5f3; --panel:#ffffff; --panel2:#f1f1ef; --panel3:#e8e8e5;
-    --ink:#1b1c1f; --sub:#6d7079; --faint:#a3a6ad; --line:#e7e7e3; --line2:#d8d8d3;
-    --accent:#4f5bd5; --accent-ink:#ffffff; --accent-soft:rgba(79,91,213,.12); --accent-ring:rgba(79,91,213,.22);
-    --cond-tint:#eef0fb; --cond-accent:#4553c0;
-    --act-tint:#fbf2e3; --act-accent:#9d6512;
-    --na-bg:#f4f4f2; --na-ink:#a9abb1; --sel:#e9ecfb;
-    --danger:#d33f39; --ok:#1f8a4c; --warn:#b3771b;
-    --shadow-sm:0 1px 2px rgba(20,22,30,.06), 0 0 0 1px rgba(20,22,30,.03);
-    --shadow:0 12px 32px -8px rgba(20,22,30,.18), 0 2px 8px rgba(20,22,30,.06);
-    --r:8px; --r-lg:12px;
-    --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    --sans:"Inter", "Noto Sans JP", ui-sans-serif, system-ui, "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
+    --bg:#ffffff; --side:#f7f7f5; --panel:#ffffff; --panel2:rgba(55,53,47,.06); --panel3:rgba(55,53,47,.12);
+    --ink:#37352f; --sub:rgba(55,53,47,.65); --faint:rgba(55,53,47,.4); --line:rgba(55,53,47,.09); --line2:rgba(55,53,47,.16);
+    --accent:#2383e2; --accent-ink:#ffffff; --accent-soft:rgba(35,131,226,.14); --accent-ring:rgba(35,131,226,.5);
+    --sel:rgba(35,131,226,.14); --na-bg:rgba(55,53,47,.025); --na-ink:rgba(55,53,47,.35);
+    --danger:#eb5757; --ok:#448361; --warn:#d9730d;
+    --tv-gray:#e3e2e0; --tv-gray-ink:#32302c; --tv-green:#dbeddb; --tv-green-ink:#1c3829; --tv-red:#ffe2dd; --tv-red-ink:#5d1715;
+    --tv-blue:#d3e5ef; --tv-blue-ink:#183347; --tv-orange:#fadec9; --tv-orange-ink:#49290e; --tv-yellow:#fdecc8; --tv-yellow-ink:#402c1b;
+    --tv-purple:#e8deee; --tv-purple-ink:#412454; --tv-pink:#f5e0e9; --tv-pink-ink:#4c2337; --tv-brown:#eee0da; --tv-brown-ink:#442a1e;
+    --shadow-sm:rgba(15,15,15,.1) 0 0 0 1px, rgba(15,15,15,.1) 0 2px 4px;
+    --shadow:rgba(15,15,15,.05) 0 0 0 1px, rgba(15,15,15,.1) 0 3px 6px, rgba(15,15,15,.2) 0 9px 24px;
+    --r:4px; --r-lg:6px;
+    --mono:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --sans:ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      --bg:#111214; --panel:#191a1d; --panel2:#202124; --panel3:#28292d;
-      --ink:#ececec; --sub:#9a9ea6; --faint:#666a72; --line:#26272b; --line2:#34363b;
-      --accent:#7c88f2; --accent-ink:#0f1020; --accent-soft:rgba(124,136,242,.16); --accent-ring:rgba(124,136,242,.32);
-      --cond-tint:#1c2040; --cond-accent:#a3adf7;
-      --act-tint:#2b2415; --act-accent:#e3b35f;
-      --na-bg:#151618; --na-ink:#5e6168; --sel:#242b4f;
-      --danger:#f0736a; --ok:#5fd08e; --warn:#e4b662;
-      --shadow-sm:0 1px 2px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.04);
-      --shadow:0 16px 40px -8px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.4);
+      --bg:#191919; --side:#202020; --panel:#252525; --panel2:rgba(255,255,255,.055); --panel3:rgba(255,255,255,.11);
+      --ink:rgba(255,255,255,.81); --sub:rgba(255,255,255,.45); --faint:rgba(255,255,255,.28); --line:rgba(255,255,255,.094); --line2:rgba(255,255,255,.16);
+      --accent:#529cca; --accent-ink:#ffffff; --accent-soft:rgba(82,156,202,.2); --accent-ring:rgba(82,156,202,.55);
+      --sel:rgba(35,131,226,.28); --na-bg:rgba(255,255,255,.02); --na-ink:rgba(255,255,255,.3);
+      --danger:#ff7369; --ok:#4dab9a; --warn:#ffa344;
+      --tv-gray:#5a5a5a; --tv-gray-ink:rgba(255,255,255,.81); --tv-green:#2b593f; --tv-green-ink:rgba(255,255,255,.81); --tv-red:#6e3630; --tv-red-ink:rgba(255,255,255,.81);
+      --tv-blue:#28456c; --tv-blue-ink:rgba(255,255,255,.81); --tv-orange:#854c1d; --tv-orange-ink:rgba(255,255,255,.81); --tv-yellow:#89632a; --tv-yellow-ink:rgba(255,255,255,.81);
+      --tv-purple:#492f64; --tv-purple-ink:rgba(255,255,255,.81); --tv-pink:#69314c; --tv-pink-ink:rgba(255,255,255,.81); --tv-brown:#603b2c; --tv-brown-ink:rgba(255,255,255,.81);
+      --shadow-sm:rgba(15,15,15,.2) 0 0 0 1px, rgba(15,15,15,.4) 0 2px 4px;
+      --shadow:rgba(15,15,15,.2) 0 0 0 1px, rgba(15,15,15,.3) 0 3px 6px, rgba(15,15,15,.6) 0 9px 24px;
     }
   }
   :root[data-theme="dark"]{
-    --bg:#111214; --panel:#191a1d; --panel2:#202124; --panel3:#28292d;
-    --ink:#ececec; --sub:#9a9ea6; --faint:#666a72; --line:#26272b; --line2:#34363b;
-    --accent:#7c88f2; --accent-ink:#0f1020; --accent-soft:rgba(124,136,242,.16); --accent-ring:rgba(124,136,242,.32);
-    --cond-tint:#1c2040; --cond-accent:#a3adf7;
-    --act-tint:#2b2415; --act-accent:#e3b35f;
-    --na-bg:#151618; --na-ink:#5e6168; --sel:#242b4f;
-    --danger:#f0736a; --ok:#5fd08e; --warn:#e4b662;
-    --shadow-sm:0 1px 2px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.04);
-    --shadow:0 16px 40px -8px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.4);
+    --bg:#191919; --side:#202020; --panel:#252525; --panel2:rgba(255,255,255,.055); --panel3:rgba(255,255,255,.11);
+    --ink:rgba(255,255,255,.81); --sub:rgba(255,255,255,.45); --faint:rgba(255,255,255,.28); --line:rgba(255,255,255,.094); --line2:rgba(255,255,255,.16);
+    --accent:#529cca; --accent-ink:#ffffff; --accent-soft:rgba(82,156,202,.2); --accent-ring:rgba(82,156,202,.55);
+    --sel:rgba(35,131,226,.28); --na-bg:rgba(255,255,255,.02); --na-ink:rgba(255,255,255,.3);
+    --danger:#ff7369; --ok:#4dab9a; --warn:#ffa344;
+    --tv-gray:#5a5a5a; --tv-gray-ink:rgba(255,255,255,.81); --tv-green:#2b593f; --tv-green-ink:rgba(255,255,255,.81); --tv-red:#6e3630; --tv-red-ink:rgba(255,255,255,.81);
+    --tv-blue:#28456c; --tv-blue-ink:rgba(255,255,255,.81); --tv-orange:#854c1d; --tv-orange-ink:rgba(255,255,255,.81); --tv-yellow:#89632a; --tv-yellow-ink:rgba(255,255,255,.81);
+    --tv-purple:#492f64; --tv-purple-ink:rgba(255,255,255,.81); --tv-pink:#69314c; --tv-pink-ink:rgba(255,255,255,.81); --tv-brown:#603b2c; --tv-brown-ink:rgba(255,255,255,.81);
+    --shadow-sm:rgba(15,15,15,.2) 0 0 0 1px, rgba(15,15,15,.4) 0 2px 4px;
+    --shadow:rgba(15,15,15,.2) 0 0 0 1px, rgba(15,15,15,.3) 0 3px 6px, rgba(15,15,15,.6) 0 9px 24px;
   }
   :root[data-theme="light"]{color-scheme:light;}
   :root[data-theme="dark"]{color-scheme:dark;}
@@ -53,350 +55,357 @@
   *{box-sizing:border-box;}
   html,body{height:100%;}
   body{
-    margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:13.5px; line-height:1.5;
+    margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:14px; line-height:1.5;
     display:flex; flex-direction:column; height:100vh; overflow:hidden;
-    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    -webkit-font-smoothing:antialiased;
   }
   button,input,select,textarea{font-family:inherit; color:inherit; font-size:inherit;}
   button{cursor:pointer;}
   button:disabled{opacity:.35; cursor:default;}
-  :focus-visible{outline:none; box-shadow:0 0 0 3px var(--accent-ring);}
+  :focus-visible{outline:none; box-shadow:0 0 0 2px var(--accent-ring);}
   ::selection{background:var(--accent-soft);}
-  .btn, .mini, .cell, .item, .seg button, .menu button, .add-btn, .gen-btn, .badge, .caret, .title-input, .item input, .chips button{
-    transition:background-color .12s ease, border-color .12s ease, color .12s ease, box-shadow .12s ease, opacity .12s ease, transform .08s ease;
+  .btn, .mini, .cell, .item, .seg button, .menu button, .add-btn, .gen-btn, .caret, .title-input, .item input, .chips button, .addrow, .addcol{
+    transition:background-color .1s ease, color .1s ease, box-shadow .1s ease, opacity .1s ease;
   }
   @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
 
-  /* ========== 汎用ボタン ========== */
+  /* ========== 汎用ボタン（Notion のフラットなボタン） ========== */
   .btn{
-    display:inline-flex; align-items:center; justify-content:center; gap:6px; height:30px; padding:0 11px;
-    border:1px solid var(--line); background:var(--panel); border-radius:var(--r);
-    font-size:12.5px; font-weight:500; line-height:1; white-space:nowrap; color:var(--ink); box-shadow:var(--shadow-sm);
+    display:inline-flex; align-items:center; justify-content:center; gap:6px; height:28px; padding:0 8px;
+    border:none; background:transparent; border-radius:var(--r); font-size:14px; font-weight:400; line-height:1; white-space:nowrap; color:var(--ink);
   }
-  .btn:hover:not(:disabled){background:var(--panel2); border-color:var(--line2);}
-  .btn:active:not(:disabled){transform:translateY(1px); box-shadow:none;}
-  .btn.warn:hover:not(:disabled){color:var(--danger); border-color:color-mix(in srgb, var(--danger) 40%, var(--line));}
-  .btn.primary{background:var(--accent); border-color:transparent; color:var(--accent-ink); font-weight:600; box-shadow:0 1px 2px rgba(20,22,30,.12), inset 0 1px 0 rgba(255,255,255,.18);}
-  .btn.primary:hover:not(:disabled){background:color-mix(in srgb, var(--accent) 88%, var(--ink)); border-color:transparent;}
-  .btn.ghost{border-color:transparent; background:transparent; box-shadow:none; color:var(--sub);}
-  .btn.ghost:hover:not(:disabled){background:var(--panel2); color:var(--ink); border-color:transparent;}
-  .btn.dim{color:var(--sub);}
-  .btn.dim:not(:hover){background:transparent; border-color:transparent; box-shadow:none;}
-  .btn .ic{font-size:13px; line-height:1; opacity:.85;}
-  .sep{width:1px; height:18px; background:var(--line); margin:0 4px; flex-shrink:0;}
+  .btn:hover:not(:disabled){background:var(--panel2);}
+  .btn:active:not(:disabled){background:var(--panel3);}
+  .btn.warn:hover:not(:disabled){color:var(--danger);}
+  .btn.primary{background:var(--accent); color:var(--accent-ink); font-weight:500; padding:0 10px;}
+  .btn.primary:hover:not(:disabled){background:color-mix(in srgb, var(--accent) 88%, #000);}
+  .btn.ghost{color:var(--sub);}
+  .btn.ghost:hover:not(:disabled){color:var(--ink);}
+  .btn.dim{color:var(--faint);}
+  .btn .ic{font-size:14px; line-height:1; opacity:.8;}
+  .sep{width:1px; height:16px; background:var(--line2); margin:0 4px; flex-shrink:0;}
   /* 表示が切り替わってもボタン幅が動かないよう、両方のラベルを重ねて置く */
   .tg{display:grid; justify-items:center; align-items:center;}
   .tg > span{grid-area:1 / 1; white-space:nowrap;}
   .tg > span.off{visibility:hidden;}
 
-  /* ========== ヘッダー ========== */
+  /* ========== 上部バー ========== */
   header{
-    display:flex; align-items:center; gap:14px; padding:0 16px; height:52px; flex-shrink:0;
-    background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap;
+    display:flex; align-items:center; gap:8px; padding:0 12px; height:45px; flex-shrink:0;
+    background:var(--bg); flex-wrap:wrap;
   }
-  header .brand{display:flex; align-items:center; gap:9px; flex-shrink:0;}
+  header .brand{display:flex; align-items:center; gap:8px; flex-shrink:0; padding:0 6px; height:28px; border-radius:var(--r);}
   .logo{
-    width:24px; height:24px; border-radius:7px; flex-shrink:0;
-    background:linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #8fd3ff));
-    position:relative; box-shadow:0 1px 3px rgba(20,22,30,.18), inset 0 1px 0 rgba(255,255,255,.3);
+    width:20px; height:20px; border-radius:4px; flex-shrink:0; background:var(--ink); position:relative;
   }
-  .logo::before, .logo::after{content:""; position:absolute; background:rgba(255,255,255,.9); border-radius:1px;}
-  .logo::before{left:6px; right:6px; top:8px; height:1.5px; box-shadow:0 4px 0 rgba(255,255,255,.9), 0 8px 0 rgba(255,255,255,.9);}
-  .logo::after{top:6px; bottom:6px; left:11px; width:1.5px;}
-  header h1{font-size:13.5px; margin:0; font-weight:600; letter-spacing:-.005em; line-height:1.2;}
+  .logo::before, .logo::after{content:""; position:absolute; background:var(--bg); border-radius:1px;}
+  .logo::before{left:5px; right:5px; top:6px; height:1.5px; box-shadow:0 3.5px 0 var(--bg), 0 7px 0 var(--bg);}
+  .logo::after{top:4.5px; bottom:4.5px; left:9.25px; width:1.5px;}
+  header h1{font-size:14px; margin:0; font-weight:500; line-height:1.2;}
+  .crumb{color:var(--faint); font-size:14px; display:flex; align-items:center; gap:8px; min-width:0; flex:1;}
+  .crumb .cur{color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .hdr-actions{display:flex; gap:2px; flex-wrap:wrap; align-items:center; margin-left:auto;}
+  .hdr-actions .btn{font-size:14px;}
+  #themeBtn{min-width:6em;}
+
+  /* ========== 見出し（ページタイトル） ========== */
+  .page-head{padding:22px 48px 0 48px; flex-shrink:0;}
   .title-input{
-    flex:1; min-width:140px; height:32px; font-size:14px; font-weight:600; padding:0 10px; border:1px solid transparent;
-    border-radius:var(--r); background:transparent; color:var(--ink); letter-spacing:-.005em;
+    width:100%; font-size:32px; font-weight:700; line-height:1.2; padding:2px 0; border:none; background:transparent; color:var(--ink); letter-spacing:-.01em;
   }
-  .title-input:hover{background:var(--panel2);}
-  .title-input:focus{background:var(--panel); border-color:var(--line2); box-shadow:0 0 0 3px var(--accent-ring); outline:none;}
-  .title-input::placeholder{color:var(--faint); font-weight:500;}
-  .hdr-actions{display:flex; gap:4px; flex-wrap:wrap; align-items:center;}
-  .hdr-actions .btn{height:28px; padding:0 9px; font-size:12px;}
-  #themeBtn{min-width:6.5em;}
+  .title-input:focus{outline:none; box-shadow:none;}
+  .title-input::placeholder{color:var(--faint);}
 
   /* ========== サイドバー ========== */
   .body{flex:1; display:flex; min-height:0;}
   aside{
-    width:300px; flex-shrink:0; background:var(--bg); border-right:1px solid var(--line);
-    padding:16px 14px 28px; overflow-y:auto; display:flex; flex-direction:column; gap:22px;
+    width:288px; flex-shrink:0; background:var(--side);
+    padding:10px 8px 24px; overflow-y:auto; display:flex; flex-direction:column; gap:16px;
   }
   aside h2{
-    font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); margin:0 0 8px 4px; font-weight:600;
+    font-size:12px; color:var(--sub); margin:0 0 2px; font-weight:500; padding:4px 8px; height:28px;
     display:flex; align-items:center; gap:8px;
   }
   .item{
-    position:relative; display:flex; flex-direction:column; gap:6px; padding:8px 10px 10px; margin-bottom:6px;
-    border:1px solid var(--line); border-radius:var(--r-lg); background:var(--panel); box-shadow:var(--shadow-sm);
+    position:relative; display:flex; flex-direction:column; gap:2px; padding:6px 6px 8px 8px; margin-bottom:2px;
+    border-radius:var(--r); background:transparent;
   }
-  .item:hover{border-color:var(--line2);}
-  .item:focus-within{border-color:color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow:0 0 0 3px var(--accent-soft);}
+  .item:hover{background:var(--panel2);}
+  .item:focus-within{background:var(--panel2);}
   .item .top{display:flex; gap:2px; align-items:center;}
   .item .top > .tag{margin-right:4px;}
   .item input[type=text]{
-    flex:1; min-width:0; height:28px; padding:0 8px; border:1px solid transparent; border-radius:6px;
-    font-size:13px; background:transparent; color:var(--ink);
+    flex:1; min-width:0; height:26px; padding:0 6px; border:none; border-radius:3px;
+    font-size:14px; background:transparent; color:var(--ink);
   }
-  .item .top input[type=text]{font-weight:600;}
+  .item .top input[type=text]{font-weight:500;}
   .item input[type=text]:hover{background:var(--panel2);}
-  .item input[type=text]:focus{background:var(--panel2); border-color:transparent; box-shadow:none; outline:none;}
+  .item input[type=text]:focus{background:var(--bg); box-shadow:0 0 0 2px var(--accent-ring); outline:none;}
   .item input[type=text]::placeholder{color:var(--faint); font-weight:400;}
   .item .mini{
-    border:none; background:transparent; color:var(--faint); font-size:12px; line-height:1;
-    width:24px; height:24px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+    border:none; background:transparent; color:var(--faint); font-size:13px; line-height:1;
+    width:24px; height:24px; border-radius:3px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
   }
-  .item .mini:hover:not(:disabled){background:var(--panel2); color:var(--ink);}
-  .item .mini.x:hover:not(:disabled){color:var(--danger); background:color-mix(in srgb, var(--danger) 10%, transparent);}
+  .item .mini:hover:not(:disabled){background:var(--panel3); color:var(--ink);}
+  .item .mini.x:hover:not(:disabled){color:var(--danger);}
   @media (hover:hover){
     .item .mini{opacity:0;}
     .item:hover .mini, .item:focus-within .mini, .item .mini:focus-visible{opacity:1;}
   }
-  .item .vals{display:flex; flex-direction:column; gap:5px;}
-  .item .vals input, .item .frow input{font-family:var(--mono); font-size:12px; background:var(--panel2); height:27px;}
-  .item .vals input:hover, .item .frow input:hover{background:var(--panel3);}
-  .item .vals input:focus, .item .frow input:focus{background:var(--panel2); box-shadow:0 0 0 2px var(--accent-ring);}
-  .item.grouped{border-left:3px solid var(--cond-accent); padding-left:8px;}
-  .item .frow{display:flex; align-items:center; gap:6px;}
-  .item .frow .flabel{font-size:11px; color:var(--sub); flex-shrink:0; white-space:nowrap;}
+  .item .vals{display:flex; flex-direction:column; gap:3px;}
+  .item .vals input, .item .frow input{font-size:13px; height:26px; color:var(--sub);}
+  .item .vals input:focus, .item .frow input:focus{color:var(--ink);}
+  .item.grouped{box-shadow:inset 2px 0 0 var(--tv-blue-ink); }
+  :root[data-theme="dark"] .item.grouped{box-shadow:inset 2px 0 0 var(--accent);}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .item.grouped{box-shadow:inset 2px 0 0 var(--accent);} }
+  .item .frow{display:flex; align-items:center; gap:4px;}
+  .item .frow .flabel{font-size:12px; color:var(--faint); flex-shrink:0; white-space:nowrap; width:5em; padding-left:6px;}
   .item .frow .combobox{flex:1; min-width:0;}
-  .item .frow .combobox > input{padding-right:24px; font-family:var(--sans);}
-  .item .frow .combobox .caret{right:3px; top:3px; bottom:3px;}
-  .chips{display:flex; gap:4px; flex-wrap:wrap; padding-left:1px;}
+  .item .frow .combobox > input{padding-right:24px;}
+  .item .frow .combobox .caret{right:2px; top:2px; bottom:2px;}
+  .item .vals{padding-left:0;}
+  .item .vals > input{padding-left:6px;}
+  .chips{display:flex; gap:4px; flex-wrap:wrap; padding:2px 0 0 6px;}
   .chips button{
-    font-family:var(--mono); font-size:10.5px; padding:1px 8px; border-radius:999px;
-    border:1px solid var(--line); background:var(--panel); color:var(--sub);
+    font-size:12px; padding:0 6px; height:20px; border-radius:3px; border:none; background:var(--tv-gray); color:var(--tv-gray-ink); opacity:.8;
   }
-  .chips button:hover{border-color:var(--accent); color:var(--accent);}
+  .chips button:hover{opacity:1;}
   .tag{
-    display:inline-flex; align-items:center; font-family:var(--mono); font-size:10px; font-weight:600; padding:0 5px; height:18px; border-radius:5px;
-    line-height:1; flex-shrink:0; letter-spacing:.02em;
+    display:inline-flex; align-items:center; font-family:var(--mono); font-size:11px; font-weight:500; padding:0 5px; height:18px; border-radius:3px;
+    line-height:1; flex-shrink:0;
   }
-  .tag.c{background:var(--cond-tint); color:var(--cond-accent);}
-  .tag.a{background:var(--act-tint); color:var(--act-accent);}
-  th .tag{margin-right:7px; vertical-align:1px;}
+  .tag.c{background:var(--tv-blue); color:var(--tv-blue-ink);}
+  .tag.a{background:var(--tv-orange); color:var(--tv-orange-ink);}
+  th .tag{margin-right:6px; vertical-align:1px;}
   .add-btn{
-    width:100%; height:32px; padding:0 10px; border:1px dashed var(--line2); background:transparent;
-    color:var(--sub); border-radius:var(--r); font-size:12.5px; font-weight:500; text-align:left;
+    width:100%; height:28px; padding:0 8px; border:none; background:transparent;
+    color:var(--sub); border-radius:var(--r); font-size:14px; text-align:left;
   }
-  .add-btn:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-soft); border-style:solid;}
+  .add-btn:hover{background:var(--panel2); color:var(--ink);}
   .gen-btn{
-    width:100%; height:38px; padding:0 14px; border:none; border-radius:var(--r);
-    background:var(--ink); color:var(--bg); font-size:13px; font-weight:600;
-    box-shadow:0 1px 2px rgba(20,22,30,.18), inset 0 1px 0 rgba(255,255,255,.12);
+    width:100%; height:32px; padding:0 12px; border:none; border-radius:var(--r);
+    background:var(--accent); color:var(--accent-ink); font-size:14px; font-weight:500;
   }
-  .gen-btn:hover{filter:brightness(1.12);}
-  .gen-btn:active{transform:translateY(1px); box-shadow:none;}
-  .gen-btn small{font-weight:400; opacity:.65; margin-left:6px; font-size:12px;}
+  .gen-btn:hover{background:color-mix(in srgb, var(--accent) 88%, #000);}
+  .gen-btn small{font-weight:400; opacity:.8; margin-left:6px; font-size:12px;}
   .hint{
-    font-size:11.5px; color:var(--sub); line-height:1.7; margin:auto 0 0;
-    padding:10px 12px; border-radius:var(--r); background:color-mix(in srgb, var(--panel) 60%, transparent); border:1px solid var(--line);
+    font-size:12px; color:var(--sub); line-height:1.7; margin:auto 0 0; padding:8px;
   }
   .hint kbd, .dlg-note kbd, table.keys kbd{
-    font-family:var(--mono); font-size:10.5px; border:1px solid var(--line2); border-bottom-width:2px; border-radius:4px;
-    padding:0 5px; background:var(--panel); color:var(--ink);
+    font-family:var(--mono); font-size:11px; border-radius:3px; padding:1px 5px; background:var(--panel2); color:var(--ink);
   }
 
-  /* ========== ツールバーと状態バー ========== */
+  /* ========== ビュー切替（Notion のデータベースヘッダー） ========== */
   main{flex:1; display:flex; flex-direction:column; min-width:0; background:var(--bg);}
   .toolbar{
-    display:flex; gap:4px; padding:8px 16px; border-bottom:1px solid var(--line);
-    background:var(--panel); flex-wrap:wrap; flex-shrink:0; align-items:center;
+    display:flex; gap:2px; padding:14px 48px 0; border-bottom:1px solid var(--line);
+    background:var(--bg); flex-wrap:wrap; flex-shrink:0; align-items:center;
   }
   .toolbar .spacer{flex:1; min-width:8px;}
-  .toolbar .btn:not(.primary){border-color:transparent; box-shadow:none; background:transparent;}
-  .toolbar .btn:not(.primary):hover:not(:disabled){background:var(--panel2); border-color:transparent;}
-  .seg{display:inline-flex; background:var(--panel2); border-radius:var(--r); padding:3px; gap:2px; margin-right:6px;}
+  .toolbar .btn{height:28px; margin-bottom:6px; color:var(--sub); font-size:14px;}
+  .toolbar .btn:hover:not(:disabled){color:var(--ink);}
+  .toolbar .btn.primary, .toolbar .btn.primary:hover{color:var(--accent-ink);}
+  .toolbar .sep{margin-bottom:6px;}
+  .seg{display:inline-flex; gap:2px; margin-right:8px; align-self:stretch;}
   .seg button{
-    height:24px; padding:0 10px; border:none; background:transparent; font-size:12px; font-weight:500; color:var(--sub); border-radius:6px;
+    height:34px; padding:0 8px; border:none; background:transparent; font-size:14px; font-weight:500; color:var(--sub); border-radius:var(--r) var(--r) 0 0;
+    position:relative; display:inline-flex; align-items:center; gap:6px;
   }
-  .seg button:hover{color:var(--ink);}
-  .seg button.active{background:var(--panel); color:var(--ink); font-weight:600; box-shadow:0 1px 2px rgba(20,22,30,.12), 0 0 0 1px var(--line);}
+  .seg button::before{content:"⊞"; font-size:14px; opacity:.7;}
+  .seg button[data-layout="h"]::before{content:"☰";}
+  .seg button:hover{background:var(--panel2); color:var(--ink);}
+  .seg button.active{color:var(--ink);}
+  .seg button.active::after{content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--ink); border-radius:1px;}
 
   .status{
-    display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:12px 20px 0; min-height:36px; font-size:12px; flex-shrink:0;
+    display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:10px 48px 0; min-height:30px; font-size:12px; flex-shrink:0;
   }
   .status:empty{display:none;}
   .badge{
-    display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 10px; border-radius:999px;
-    border:1px solid var(--line); color:var(--sub); background:var(--panel); font-variant-numeric:tabular-nums; font-weight:500;
+    display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 8px; border-radius:3px;
+    border:none; color:var(--sub); background:var(--panel2); font-variant-numeric:tabular-nums; font-weight:400;
   }
-  .badge::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--faint); flex-shrink:0;}
-  .badge.ok{color:var(--ok); border-color:color-mix(in srgb, var(--ok) 30%, transparent); background:color-mix(in srgb, var(--ok) 8%, var(--panel));}
-  .badge.ok::before{background:var(--ok);}
-  .badge.warn{color:var(--warn); border-color:color-mix(in srgb, var(--warn) 35%, transparent); background:color-mix(in srgb, var(--warn) 9%, var(--panel));}
-  .badge.warn::before{background:var(--warn);}
+  .badge.ok{color:var(--ok); background:var(--tv-green);}
+  .badge.ok::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--ok); flex-shrink:0;}
+  .badge.warn{color:var(--warn); background:var(--tv-orange);}
+  .badge.warn::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--warn); flex-shrink:0;}
   details.badge{position:relative; cursor:pointer;}
-  details.badge:hover{border-color:currentColor;}
+  details.badge:hover{filter:brightness(.96);}
   details.badge summary{list-style:none; display:inline-flex; align-items:center;}
   details.badge summary::-webkit-details-marker{display:none;}
   details.badge summary::after{content:"▾"; margin-left:5px; opacity:.6; font-size:11px;}
   details.badge ul{
-    position:absolute; top:calc(100% + 8px); left:0; z-index:30; background:var(--panel); border:1px solid var(--line);
-    border-radius:10px; padding:10px 14px 10px 28px; margin:0; min-width:280px; max-width:560px; max-height:260px; overflow:auto;
-    box-shadow:var(--shadow); font-family:var(--mono); font-size:11.5px; color:var(--ink); white-space:nowrap; line-height:1.8; font-weight:400;
+    position:absolute; top:calc(100% + 6px); left:0; z-index:30; background:var(--panel);
+    border-radius:var(--r-lg); padding:8px 12px 8px 26px; margin:0; min-width:280px; max-width:560px; max-height:260px; overflow:auto;
+    box-shadow:var(--shadow); font-family:var(--mono); font-size:12px; color:var(--ink); white-space:nowrap; line-height:1.8; font-weight:400;
   }
   .selinfo{color:var(--sub); margin-left:auto; font-variant-numeric:tabular-nums;}
 
-  .tableWrap{flex:1; overflow:auto; padding:12px 20px 28px;}
+  .tableWrap{flex:1; overflow:auto; padding:8px 48px 40px;}
   .empty{
-    display:flex; align-items:center; justify-content:center; height:100%; color:var(--sub); font-size:13.5px;
-    text-align:center; flex-direction:column; gap:8px; line-height:1.7;
+    display:flex; align-items:center; justify-content:flex-start; padding-top:24px; height:100%; color:var(--sub); font-size:14px;
+    text-align:left; flex-direction:column; gap:4px; line-height:1.7; align-items:flex-start;
   }
-  .empty::before{
-    content:""; width:56px; height:40px; border-radius:8px; border:1.5px dashed var(--line2); margin-bottom:8px; opacity:.9;
-    background:linear-gradient(var(--line2), var(--line2)) 0 13px / 100% 1.5px no-repeat, linear-gradient(var(--line2), var(--line2)) 18px 0 / 1.5px 100% no-repeat;
-  }
+  .empty .addrow{margin-top:8px;}
 
-  /* ========== 表 ========== */
+  /* ========== 表（Notion のテーブルビュー） ========== */
   table.dt{
-    border-collapse:separate; border-spacing:0; font-family:var(--mono); font-size:12.5px; background:var(--panel);
-    font-variant-numeric:tabular-nums; border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow-sm);
+    border-collapse:separate; border-spacing:0; font-size:14px; background:var(--bg); font-variant-numeric:tabular-nums;
   }
-  .dt th, .dt td{border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:4px 6px; text-align:center; white-space:nowrap; background:var(--panel);}
-  .dt tr > :last-child{border-right:none;}
-  .dt tbody tr:last-child > *{border-bottom:none;}
-  .dt thead tr:first-child > th:first-child{border-top-left-radius:var(--r-lg);}
-  .dt thead tr:first-child > th:last-child{border-top-right-radius:var(--r-lg);}
-  .dt tbody tr:last-child > :first-child{border-bottom-left-radius:var(--r-lg);}
-  .dt tbody tr:last-child > :last-child{border-bottom-right-radius:var(--r-lg);}
-  .dt thead th{position:sticky; top:0; z-index:2; background:var(--panel);}
+  .dt th, .dt td{border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:0 8px; height:33px; text-align:center; white-space:nowrap; background:var(--bg);}
+  .dt thead tr:first-child th{border-top:1px solid var(--line);}
+  .dt tr > :first-child{border-left:1px solid var(--line);}
+  .dt thead th{position:sticky; top:0; z-index:2; background:var(--bg); font-weight:400; color:var(--sub); font-size:14px;}
   .dt tr.grp th{
-    font-family:var(--sans); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; padding:5px 10px; text-align:left;
+    font-size:12px; font-weight:500; padding:0 8px; height:30px; text-align:left; color:var(--sub);
   }
-  .dt th{font-family:var(--sans); font-weight:600; font-size:12.5px;}
-  .dt th.cond-h{background:color-mix(in srgb, var(--cond-tint) 60%, var(--panel)); color:var(--cond-accent);}
-  .dt th.act-h{background:color-mix(in srgb, var(--act-tint) 60%, var(--panel)); color:var(--act-accent);}
-  .dt tr.grp th.cond-h, .dt tr.grp th.act-h, .dt tr.gsub th{background:var(--panel);}
-  .dt tr.grp th.cond-h::before, .dt tr.grp th.act-h::before{content:""; display:inline-block; width:6px; height:6px; border-radius:50%; background:currentColor; margin-right:8px; vertical-align:1px;}
-  .dt th.note-h, .dt th.no, .dt th.sel{color:var(--sub); font-weight:500; font-size:11.5px;}
-  .dt td.cond-c, .dt td.act-c{background:var(--panel);}
-  .dt td.no{color:var(--faint); font-size:11px;}
-  .dt tbody tr:hover > td{background:color-mix(in srgb, var(--panel2) 55%, var(--panel));}
+  .dt tr.grp th.cond-h, .dt tr.grp th.act-h, .dt tr.gsub th{background:var(--bg);}
+  .dt tr.grp th.cond-h::before, .dt tr.grp th.act-h::before{content:""; display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:8px; vertical-align:-1px; background:var(--tv-blue-ink); opacity:.55;}
+  .dt tr.grp th.act-h::before{background:var(--tv-orange-ink);}
+  .dt th.note-h, .dt th.no, .dt th.sel{color:var(--faint); font-weight:400;}
+  .dt td.no{color:var(--faint); font-size:12px;}
+  .dt tbody tr:hover > td{background:color-mix(in srgb, var(--panel2) 50%, var(--bg));}
   .dt tr.sel td, .dt td.sel{background:var(--sel) !important;}
   .dt tr.na td, .dt td.na{background:var(--na-bg) !important; color:var(--na-ink);}
   .dt tr.na td .cell, .dt td.na .cell{color:var(--na-ink);}
+  .dt tr.na td .tagv, .dt td.na .tagv{opacity:.45;}
   .dt tr.na td.no{text-decoration:line-through;}
   /* 縦表：見出し列は左に固定。グループ列があるときはその幅（--gw）だけ右へずらす */
-  .dt.v th.lbl{position:sticky; left:var(--gw, 0px); z-index:1; text-align:left; background:var(--panel); padding:5px 10px;}
-  .dt.v th.lbl.cond-h, .dt.v th.lbl.act-h{color:var(--ink); background:var(--panel);}
+  .dt.v th.lbl{position:sticky; left:var(--gw, 0px); z-index:1; text-align:left; background:var(--bg); padding:0 10px; color:var(--ink); font-weight:400;}
+  .dt.v th.lbl.cond-h, .dt.v th.lbl.act-h{color:var(--ink); background:var(--bg);}
   .dt.v th.gname{
-    position:sticky; left:0; z-index:1; text-align:left; background:var(--panel);
-    font-family:var(--sans); font-weight:600; font-size:11px; color:var(--sub); padding:4px 10px;
+    position:sticky; left:0; z-index:1; text-align:left; background:var(--bg);
+    font-weight:400; font-size:13px; color:var(--sub); padding:0 10px;
   }
-  .dt.v th.gname.cond-h, .dt.v th.gname.act-h, .dt.v th.gname.note-h{background:var(--panel);}
+  .dt.v th.gname.cond-h, .dt.v th.gname.act-h, .dt.v th.gname.note-h{background:var(--bg);}
   .dt.v th.gname.cont{border-top:none;}
   .dt.v thead th.corner{z-index:3;}
-  .dt.v th.rule-h{font-family:var(--mono); font-weight:600; min-width:3.2em; color:var(--sub); font-size:11.5px;}
+  .dt.v th.rule-h{font-weight:400; min-width:3.6em; color:var(--sub); font-size:13px;}
   .dt.v th.rule-h.na{color:var(--na-ink); text-decoration:line-through; background:var(--na-bg);}
-  .dt.v th.rule-h.sel{background:var(--sel); color:var(--accent);}
+  .dt.v th.rule-h.sel{background:var(--sel); color:var(--ink);}
   .dt.v th.rule-h label, .dt.v th.corner label{cursor:pointer; display:inline-flex; gap:6px; align-items:center;}
-  .dt.v th.corner label{font-family:var(--sans); font-weight:500; font-size:11.5px; color:var(--sub);}
-  .dt.v tr.grp th.sect{position:sticky; left:0; z-index:1; text-align:left; color:var(--cond-accent); background:color-mix(in srgb, var(--cond-tint) 55%, var(--panel));}
-  .dt.v tr.grp th.sect.act-h{color:var(--act-accent); background:color-mix(in srgb, var(--act-tint) 55%, var(--panel));}
-  .dt.h th.gspan{font-weight:600; font-size:11px; letter-spacing:.02em; color:var(--sub);}
-  .dt.h thead tr:last-child th.cond-h, .dt.h thead tr:last-child th.act-h{color:var(--ink); background:var(--panel);}
-  .dt.h tr.grp th.cond-h{color:var(--cond-accent);}
-  .dt.h tr.grp th.act-h{color:var(--act-accent);}
+  .dt.v th.corner label{font-weight:400; font-size:13px; color:var(--sub);}
+  .dt.v tr.grp th.sect{position:sticky; left:0; z-index:1; text-align:left;}
+  .dt.h th.gspan{font-weight:400; font-size:12px; color:var(--sub);}
+  .dt.h thead tr:last-child th.cond-h, .dt.h thead tr:last-child th.act-h{color:var(--sub); background:var(--bg); text-align:left;}
+  .dt.h thead tr:last-child th{text-align:left;}
+  .dt.h thead tr:last-child th.sel, .dt.h thead tr:last-child th.no{text-align:center;}
+  .dt.h tr.grp th.cond-h, .dt.h tr.grp th.act-h{color:var(--sub);}
+  /* Notion の「+ 新規」行と「+」列 */
+  .dt td.addrow, .dt th.addcol{color:var(--faint); text-align:left; cursor:pointer; user-select:none; padding:0 8px; font-size:14px;}
+  .dt td.addrow:hover, .dt th.addcol:hover{background:var(--panel2); color:var(--sub);}
+  .dt th.addcol{text-align:center; min-width:34px; font-size:16px; line-height:1; border-right:none; border-top:none !important; color:var(--faint);}
+  .dt.v td.addpad{border:none; background:transparent !important; padding:0; min-width:0; width:34px;}
 
-  /* セルの操作枠：選択肢のセルも自由入力のセルも、同じ大きさ・同じ位置にそろえる */
-  .dt td.cond-c, .dt td.act-c, .dt td.note-c{padding:3px 4px;}
+  /* セル：移動モードは青枠、入力モードは白く浮く（Notion のセル選択と同じ見え方） */
+  .dt td.cond-c, .dt td.act-c, .dt td.note-c{padding:0; min-width:7em;}
   .cellbox{position:relative; display:block;}
-  .cellbox::after{
-    content:""; position:absolute; right:8px; top:calc(50% - 2px); pointer-events:none;
-    border-left:3.5px solid transparent; border-right:3.5px solid transparent; border-top:4px solid var(--faint);
-    opacity:0; transition:opacity .12s;
-  }
-  .dt td:hover .cellbox::after, .dt td:focus-within .cellbox::after{opacity:1;}
   .cell{
-    font:inherit; display:block; width:100%; box-sizing:border-box; min-height:27px; line-height:1.5;
-    border:1px solid transparent; border-radius:6px; background:transparent; color:var(--ink); text-align:center;
+    font:inherit; display:flex; align-items:center; justify-content:center; width:100%; box-sizing:border-box; min-height:33px; line-height:1.5;
+    border:none; border-radius:0; background:transparent; color:var(--ink); text-align:center; padding:0 8px; gap:4px;
   }
-  select.cell{appearance:none; -webkit-appearance:none; padding:2px 18px; text-align-last:center; cursor:pointer; font-weight:500;}
-  input.cell{font-family:var(--sans); font-size:12.5px; padding:2px 8px; min-width:6em;}
-  input.cell.note{text-align:left; min-width:9em; color:var(--sub);}
+  button.cell.pick{cursor:default;}
+  input.cell{display:block; padding:0 8px; min-width:6em; text-align:center;}
+  input.cell.note{text-align:left; min-width:10em;}
   input.cell::placeholder{color:transparent;}
-  input.cell.note::placeholder{color:var(--line2);}
   .dt td:hover input.cell::placeholder, input.cell:focus::placeholder{color:var(--faint);}
-  .cell:hover{background:var(--panel2);}
+  .cell:hover{background:transparent;}
   .cell:focus{outline:none; box-shadow:none;}
-  /* 移動モード：セルが選ばれているだけの状態。入力モードになると .editing が付く */
-  .dt .cell:focus:not(.editing){background:var(--sel); box-shadow:inset 0 0 0 1.5px var(--accent); caret-color:transparent;}
+  .dt .cell:focus:not(.editing){box-shadow:inset 0 0 0 2px var(--accent); position:relative; z-index:1; caret-color:transparent;}
   .dt input.cell[readonly]{cursor:default;}
-  .dt .cell.editing{background:var(--panel); box-shadow:inset 0 0 0 1.5px var(--accent), 0 0 0 3px var(--accent-ring); position:relative; z-index:1;}
+  .dt .cell.editing{background:var(--panel); box-shadow:var(--shadow); position:relative; z-index:3; caret-color:auto;}
   .cell.dash{color:var(--faint);}
-  .cell.on{color:var(--ok); font-weight:600;}
-  .cell.off{color:var(--faint);}
+  .cell.on{color:var(--ok); font-weight:500;}
+  .cell.off{color:var(--danger);}
+  /* 値のタグ（Notion のセレクトと同じ形） */
+  .tagv{
+    display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    height:20px; line-height:20px; padding:0 6px; border-radius:3px; font-size:14px; background:var(--tv-gray); color:var(--tv-gray-ink); vertical-align:middle;
+  }
+  .tagv.tv-green{background:var(--tv-green); color:var(--tv-green-ink);}
+  .tagv.tv-red{background:var(--tv-red); color:var(--tv-red-ink);}
+  .tagv.tv-blue{background:var(--tv-blue); color:var(--tv-blue-ink);}
+  .tagv.tv-orange{background:var(--tv-orange); color:var(--tv-orange-ink);}
+  .tagv.tv-yellow{background:var(--tv-yellow); color:var(--tv-yellow-ink);}
+  .tagv.tv-purple{background:var(--tv-purple); color:var(--tv-purple-ink);}
+  .tagv.tv-pink{background:var(--tv-pink); color:var(--tv-pink-ink);}
+  .tagv.tv-brown{background:var(--tv-brown); color:var(--tv-brown-ink);}
+  .tagv.tv-none{background:transparent; color:var(--faint);}
 
   /* 直接入力もプルダウンからの選択もできる欄 */
   .combobox{position:relative; display:block;}
   .combobox > input{width:100%;}
   .combobox > input.cell{padding-left:20px; padding-right:20px;}
   .combobox .caret{
-    position:absolute; right:2px; top:2px; bottom:2px; width:18px; padding:0; border:none;
-    background:transparent; border-radius:5px; display:flex; align-items:center; justify-content:center;
+    position:absolute; right:2px; top:50%; transform:translateY(-50%); height:22px; width:20px; padding:0; border:none;
+    background:transparent; border-radius:3px; display:flex; align-items:center; justify-content:center;
   }
   .combobox .caret::after{
     content:""; border-left:3.5px solid transparent; border-right:3.5px solid transparent;
-    border-top:4px solid var(--faint); opacity:0; transition:opacity .12s;
+    border-top:4px solid var(--faint); opacity:0; transition:opacity .1s;
   }
   .combobox:hover .caret::after, .combobox:focus-within .caret::after, .item .combobox .caret::after{opacity:1;}
   .combobox .caret:hover{background:var(--panel3);}
-  .combobox .caret:hover::after{border-top-color:var(--accent);}
   .menu{
-    position:fixed; z-index:60; background:var(--panel); border:1px solid var(--line); border-radius:10px;
-    box-shadow:var(--shadow); padding:4px; max-height:240px; overflow-y:auto; animation:pop .12s ease-out;
+    position:fixed; z-index:60; background:var(--panel); border-radius:var(--r-lg);
+    box-shadow:var(--shadow); padding:6px 4px; max-height:280px; overflow-y:auto; min-width:180px;
+    animation:pop .1s ease-out;
   }
-  @keyframes pop{from{opacity:0; transform:translateY(-3px) scale(.98);} to{opacity:1; transform:none;}}
+  @keyframes pop{from{opacity:0; transform:translateY(-2px);} to{opacity:1; transform:none;}}
+  .menu .mhead{font-size:12px; color:var(--sub); padding:2px 8px 6px; white-space:nowrap;}
   .menu button{
-    display:block; width:100%; text-align:left; border:none; background:transparent; border-radius:6px;
-    padding:5px 10px; font-size:12.5px; line-height:1.5; color:var(--ink); white-space:nowrap;
+    display:flex; align-items:center; gap:8px; width:100%; text-align:left; border:none; background:transparent; border-radius:var(--r);
+    padding:0 8px; min-height:28px; font-size:14px; line-height:1.4; color:var(--ink); white-space:nowrap;
   }
   .menu button:hover{background:var(--panel2);}
-  .menu button.active{background:var(--sel); outline:none;}
-  .menu button.cur{color:var(--accent); font-weight:600;}
+  .menu button.active{background:var(--panel2); outline:none;}
+  .menu button.cur::after{content:"✓"; margin-left:auto; color:var(--sub); font-size:12px; padding-left:12px;}
+  .menu button.danger{color:var(--danger);}
+  .menu button .k{margin-left:auto; color:var(--faint); font-size:12px; padding-left:16px;}
+  .menu hr{border:none; border-top:1px solid var(--line); margin:6px 0;}
   .vhint{
-    display:block; font-family:var(--mono); font-size:10px; font-weight:400; letter-spacing:0;
-    color:var(--faint); margin-top:1px;
+    display:block; font-size:11px; font-weight:400; letter-spacing:0; color:var(--faint); margin-top:-3px; line-height:1.3;
   }
   .dt input[type=checkbox]{accent-color:var(--accent); margin:0; vertical-align:middle; cursor:pointer; width:14px; height:14px;}
 
   /* ========== ショートカット一覧 ========== */
   .dlg{
-    border:1px solid var(--line); border-radius:14px; background:var(--panel); color:var(--ink);
-    padding:0; width:min(580px, calc(100vw - 32px)); box-shadow:var(--shadow);
+    border:none; border-radius:12px; background:var(--panel); color:var(--ink);
+    padding:0; width:min(600px, calc(100vw - 32px)); box-shadow:var(--shadow);
     max-height:calc(100vh - 48px); overflow:auto;
   }
-  .dlg::backdrop{background:rgba(10,12,20,.45); backdrop-filter:blur(2px);}
-  .dlg-head{display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--line); margin:0; position:sticky; top:0; background:var(--panel); z-index:1;}
+  .dlg::backdrop{background:rgba(15,15,15,.6);}
+  .dlg-head{display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--line); margin:0; position:sticky; top:0; background:var(--panel); z-index:1;}
   .dlg-head strong{flex:1; font-size:14px; font-weight:600;}
-  table.keys{border-collapse:collapse; width:100%; font-size:12.5px;}
-  table.keys th, table.keys td{border-bottom:1px solid var(--line); padding:8px 18px; text-align:left; vertical-align:top;}
-  table.keys th{font-size:11px; color:var(--sub); font-weight:600; white-space:nowrap;}
-  table.keys td:first-child{white-space:nowrap; font-weight:500;}
-  table.keys td.k{font-family:var(--mono); color:var(--sub); font-size:12px;}
+  table.keys{border-collapse:collapse; width:100%; font-size:14px;}
+  table.keys th, table.keys td{border-bottom:1px solid var(--line); padding:7px 16px; text-align:left; vertical-align:top;}
+  table.keys th{font-size:12px; color:var(--sub); font-weight:500; white-space:nowrap;}
+  table.keys td:first-child{white-space:nowrap;}
+  table.keys td.k{font-family:var(--mono); color:var(--sub); font-size:12.5px;}
   table.keys tr.sec th{
-    background:var(--panel2); color:var(--sub); font-size:10.5px; letter-spacing:.06em; padding:6px 18px;
+    background:var(--side); color:var(--sub); font-size:12px; padding:6px 16px; font-weight:500;
   }
   table.keys .here{color:var(--accent);}
-  table.keys td.k.here{font-weight:600;}
-  .dlg-note{margin:0; padding:14px 18px; font-size:11.5px; color:var(--sub); line-height:1.7;}
+  table.keys td.k.here{font-weight:500;}
+  .dlg-note{margin:0; padding:12px 16px; font-size:12px; color:var(--sub); line-height:1.7;}
 
-  /* ========== 通知 ========== */
+  /* ========== 通知（Notion と同じ左下の黒いトースト） ========== */
   .toast{
-    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(8px);
-    background:var(--ink); color:var(--bg); padding:9px 10px 9px 16px; border-radius:10px; font-size:12.5px; font-weight:500;
-    opacity:0; pointer-events:none; transition:opacity .18s, transform .18s; box-shadow:var(--shadow); z-index:50;
-    display:flex; gap:14px; align-items:center; max-width:calc(100vw - 32px);
+    position:fixed; bottom:20px; left:20px; transform:translateY(8px);
+    background:#0f0f0f; color:#fff; padding:8px 8px 8px 14px; border-radius:var(--r-lg); font-size:14px;
+    opacity:0; pointer-events:none; transition:opacity .15s, transform .15s; box-shadow:var(--shadow); z-index:50;
+    display:flex; gap:14px; align-items:center; max-width:calc(100vw - 40px);
   }
-  .toast.show{opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto;}
-  .toast button{background:color-mix(in srgb, var(--bg) 14%, transparent); border:none; color:var(--bg); border-radius:6px; padding:4px 10px; font-size:11.5px; font-weight:600; white-space:nowrap;}
-  .toast button:hover{background:color-mix(in srgb, var(--bg) 24%, transparent);}
+  .toast.show{opacity:1; transform:none; pointer-events:auto;}
+  .toast button{background:transparent; border:none; color:#fff; border-radius:var(--r); padding:4px 8px; font-size:14px; font-weight:500; white-space:nowrap;}
+  .toast button:hover{background:rgba(255,255,255,.12);}
 
   @media (max-width: 900px){
     body{height:auto; overflow:auto;}
-    header{height:auto; padding:10px 16px;}
+    header{height:auto; padding:8px 12px;}
     .body{flex-direction:column;}
     aside{width:auto; border-right:none; border-bottom:1px solid var(--line);}
+    .page-head, .toolbar, .status, .tableWrap{padding-left:16px; padding-right:16px;}
     .tableWrap{min-height:320px;}
   }
 </style>
@@ -419,8 +428,7 @@
     <span class="logo" aria-hidden="true"></span>
     <h1>Decision Table Builder</h1>
   </div>
-  <input id="titleInput" class="title-input" type="text" autocomplete="off"
-         placeholder="無題のディシジョンテーブル" title="表の名前（JSON保存のファイル名になります）" aria-label="表の名前">
+  <div class="crumb"><span>/</span><span class="cur" id="crumbTitle">無題</span></div>
   <div class="hdr-actions">
     <button class="btn ghost" id="newBtn">新規</button>
     <button class="btn ghost" id="sampleBtn">サンプル</button>
@@ -448,20 +456,25 @@
     </section>
     <section>
       <button class="gen-btn" id="generateBtn">全組み合わせで表を生成<small id="comboCount"></small></button>
-      <button class="add-btn" id="addRowBtn" style="margin-top:6px">+ 空のルールを1行追加</button>
+      <button class="add-btn" id="addRowBtn" style="margin-top:4px">+ ルールを追加</button>
     </section>
     <p class="hint">
       「-」は「この条件は結果に影響しない」の意味です。<br>
-      セルは矢印で移動、<kbd>Enter</kbd> で入力、<kbd>Esc</kbd> で移動に戻ります。ほかのキーは <kbd>?</kbd> で一覧。<br>
+      セルは矢印で移動、<kbd>Enter</kbd> で入力、<kbd>Esc</kbd> で移動に戻ります。<br>
+      ルールは右クリックで複製・削除できます。ほかのキーは <kbd>?</kbd> で一覧。<br>
       編集内容はこのブラウザに自動保存されます。
     </p>
   </aside>
 
   <main>
+    <div class="page-head">
+      <input id="titleInput" class="title-input" type="text" autocomplete="off"
+             placeholder="無題" title="表の名前（JSON保存のファイル名になります）" aria-label="表の名前">
+    </div>
     <div class="toolbar">
       <div class="seg" id="layoutSeg">
-        <button data-layout="v" title="伝統的なディシジョンテーブルの形">ルール＝列（縦）</button>
-        <button data-layout="h" title="1ルール1行の一覧形式">ルール＝行（横）</button>
+        <button data-layout="v" title="伝統的なディシジョンテーブルの形（ルール＝列）">縦表</button>
+        <button data-layout="h" title="1ルール1行の一覧形式（ルール＝行）">横表</button>
       </div>
       <span class="sep"></span>
       <button class="btn" id="naBtn" title="選択したルールを「発生しない組み合わせ」にする／戻す"><span class="tg"><span>N/A にする</span><span class="off">N/A 解除</span></span></button>
@@ -491,6 +504,7 @@
 </dialog>
 
 <div class="menu" id="comboMenu" role="listbox" hidden></div>
+<div class="menu" id="rowMenu" role="menu" hidden></div>
 
 <div class="toast" id="toast" role="status"></div>
 
@@ -515,7 +529,7 @@ const dom = {
   title: $('#titleInput'), table: $('#tableWrap'), status: $('#status'), layoutSeg: $('#layoutSeg'),
   naBtn: $('#naBtn'), selToggle: $('#selToggleBtn'), themeBtn: $('#themeBtn'),
   keysDlg: $('#keysDlg'), keysHead: $('#keysHead'), keysBody: $('#keysBody'),
-  toast: $('#toast'), jsonFile: $('#jsonFile'), comboMenu: $('#comboMenu'),
+  toast: $('#toast'), jsonFile: $('#jsonFile'), comboMenu: $('#comboMenu'), rowMenu: $('#rowMenu'), crumb: $('#crumbTitle'),
 };
 
 /* ======================================================================
@@ -735,8 +749,13 @@ const groupOptions = () => [
 ];
 /* 動作の候補：○ / × と、その列ですでに使った値 + 空欄 */
 const actionOptions = a => [
-  ...uniq([...MARKS.filter(Boolean), ...state.rows.map(r => actVal(r, a)).filter(Boolean)]).map(v => ({ value:v, label:v })),
-  { value:'', label:'（空欄）' },
+  ...uniq([...MARKS.filter(Boolean), ...state.rows.map(r => actVal(r, a)).filter(Boolean)]).map(v => ({ value:v, label:v, color:tagColor(v) })),
+  { value:'', label:'（空欄）', color:'none' },
+];
+/* 条件の候補：定義した値 + 「-」 */
+const condOptions = c => [
+  ...c.values.map(v => ({ value:v, label:v, color:tagColor(v, c.values) })),
+  { value:DASH, label:`${DASH}（この条件は影響しない）`, color:'none' },
 ];
 const moveBtns = (prefix, i, n) =>
   `<button class="mini" data-role="${prefix}up" title="上へ" ${i === 0 ? 'disabled' : ''}>↑</button>` +
@@ -777,39 +796,48 @@ function renderSidebar(){
 /* ======================================================================
  * 描画：表
  * ====================================================================== */
-/* 保存済みの値が選択肢に無いときは、勝手に書き換えず先頭に足して残す */
-function optionsHtml(list, v, label = o => o){
-  return (list.includes(v) ? list : [v, ...list])
-    .map(o => `<option value="${escH(o)}"${o === v ? ' selected' : ''}>${escH(label(o))}</option>`).join('');
+/* 値のタグの色（Notion のセレクトと同じ見え方）。○ は緑、× は赤、- と空欄は無色、それ以外は値の並び順で色を回す */
+const TV_COLORS = ['blue', 'purple', 'orange', 'pink', 'yellow', 'brown', 'gray'];
+function tagColor(v, list){
+  if (v === '○') return 'green';
+  if (v === '×') return 'red';
+  if (v === DASH || v === '') return 'none';
+  const i = list ? list.indexOf(v) : -1;
+  return i < 0 ? 'gray' : TV_COLORS[i % TV_COLORS.length];
 }
-/* 列が選択肢より狭くなって文字が切れないよう、最長の選択肢から下限幅を決める */
-const minW = list => `min-width:calc(${Math.max(2, ...list.map(dispW))}ch + 3em)`;
-const valHint = c => `<span class="vhint">${c.values.slice(0, 5).map(escH).join(' / ')}${c.values.length > 5 ? ' …' : ''} / ${DASH}</span>`;
+const tagHtml = (color, label) => `<span class="tagv tv-${color}">${escH(label)}</span>`;
+const tagv = (v, list) => tagHtml(tagColor(v, list), v);
 const markClass = v => v === '○' ? 'on' : v === '×' ? 'off' : '';
 const cellClass = cls => 'cell' + (cls ? ' ' + cls : '');
 /* 値に応じてクラスを付け直す。入力モードの印だけは消さずに残す */
 const setCellClass = (el, cls) => { el.className = cellClass(cls) + (inputCell === el ? ' editing' : ''); };
+const pickClass = v => 'pick' + (v === DASH ? ' dash' : '');
 
-function selectCell(cls, list, data, name, hint, label){
-  const v = data.value;
-  return `<span class="cellbox"><select class="${cellClass(cls)}" style="${minW(list)}" ${data.attrs} aria-label="${escH(name)}" title="${escH(`${name}　${hint}`)}">${optionsHtml(list, v, label)}</select></span>`;
-}
+/* 条件セル：Notion のセレクトと同じく、クリックか Enter でタグの一覧を開いて選ぶ */
 function condCell(r, c){
-  const v = condVal(r, c), list = [...c.values, DASH];
-  return selectCell(v === DASH ? 'dash' : '', list, { value:v, attrs:`data-rid="${r.id}" data-cid="${c.id}"` }, c.name, `選べる値：${list.join(' / ')}`);
+  const v = condVal(r, c);
+  return `<button type="button" class="${cellClass(pickClass(v))}" data-rid="${r.id}" data-cid="${c.id}" data-val="${escH(v)}"`
+    + ` aria-haspopup="listbox" aria-label="${escH(c.name)}" title="${escH(`${c.name}　Enter かクリックで値を選ぶ`)}">${tagv(v, c.values)}</button>`;
 }
+/* 動作セル：ふだんはタグのボタン（Enter かクリックで候補、文字を打つと入力欄に変わる） */
 function actCell(r, a){
   const v = actVal(r, a);
-  return comboField(`data-rid="${r.id}" data-aid="${a.id}"`, v, cellClass(markClass(v)), {
-    placeholder:'自由入力', label:a.name, readonly:true,
-    title:`${a.name}　Enter で入力、Esc で移動。入力中は ▾ や ↓ で候補`,
+  return `<button type="button" class="${cellClass('pick act ' + markClass(v))}" data-rid="${r.id}" data-aid="${a.id}" data-val="${escH(v)}"`
+    + ` aria-haspopup="listbox" aria-label="${escH(a.name)}" title="${escH(`${a.name}　Enter かクリックで候補、文字を打つと自由入力`)}">${v ? tagv(v) : ''}</button>`;
+}
+/* 動作セルの入力欄（入力モードのときだけ置き換えて使う） */
+function actInput(r, a){
+  const v = actVal(r, a);
+  return comboField(`data-rid="${r.id}" data-aid="${a.id}"`, v, cellClass(markClass(v) + ' editing'), {
+    placeholder:'自由入力', label:a.name,
+    title:`${a.name}　Esc で戻る。↓ で候補`,
   });
 }
 const noteCell = r => `<input type="text" class="cell note" value="${escH(r.note || '')}" data-rid="${r.id}" placeholder="備考" aria-label="備考" title="Enter で入力モード、Esc で移動モード" readonly>`;
 
 const rowCls   = r => `${r.na ? 'na' : ''} ${selected.has(r.id) ? 'sel' : ''}`.trim();
 const ruleChk  = (r, i) => `<input type="checkbox" class="rowsel" data-rid="${r.id}"${selected.has(r.id) ? ' checked' : ''} aria-label="ルール ${i+1} を選択">`;
-const condHead = (c, i) => `<span class="tag c">C${i+1}</span>${escH(c.name)}${valHint(c)}`;
+const condHead = (c, i) => `<span class="tag c">C${i+1}</span>${escH(c.name)}`;
 const actHead  = (a, i) => `<span class="tag a">A${i+1}</span>${escH(a.name)}`;
 const emptyMsg = msg => `<div class="empty">${msg}</div>`;
 
@@ -834,6 +862,7 @@ function tableH(C, A, R){
     + C.map(c => `<td class="cond-c">${condCell(r, c)}</td>`).join('')
     + A.map(a => `<td class="act-c">${actCell(r, a)}</td>`).join('')
     + `<td class="note-c">${noteCell(r)}</td></tr>`).join('');
+  h += `<tr class="addtr"><td class="addrow" colspan="${C.length + A.length + 3}" title="ルールを追加">+ 新規</td></tr>`;
   return h + '</tbody></table>';
 }
 
@@ -841,21 +870,22 @@ function tableH(C, A, R){
 function tableV(C, A, R){
   const groups = hasCondGroups();
   const gcol  = (text, tint, cont) => groups ? `<th class="gname ${tint}${cont ? ' cont' : ''}">${text}</th>` : '';
-  const cells = (cls, fn) => R.map(r => `<td class="${cls} ${rowCls(r)}" data-rid="${r.id}">${fn(r)}</td>`).join('');
+  const pad   = '<td class="addpad"></td>';
+  const cells = (cls, fn) => R.map(r => `<td class="${cls} ${rowCls(r)}" data-rid="${r.id}">${fn(r)}</td>`).join('') + pad;
   const span  = R.length + (groups ? 2 : 1);
   let h = '<table class="dt v"><thead><tr>' + (groups ? '<th class="gname corner"></th>' : '')
         + '<th class="lbl corner"><label><input type="checkbox" id="selAllChk"> 全選択</label></th>'
         + R.map((r, i) => `<th class="rule-h ${rowCls(r)}" data-rid="${r.id}"><label>${ruleChk(r, i)} R${i+1}</label></th>`).join('')
-        + '</tr></thead><tbody>';
+        + '<th class="addcol" title="ルールを追加">+</th></tr></thead><tbody>';
   if (C.length) {
-    h += `<tr class="grp"><th class="sect cond-h" colspan="${span}">条件</th></tr>`;
+    h += `<tr class="grp"><th class="sect cond-h" colspan="${span}">条件</th>${pad}</tr>`;
     let ci = 0;
     for (const run of condRuns()) run.items.forEach((c, k) => {
       h += `<tr>${gcol(k ? '' : escH(run.group), 'cond-h', k > 0)}<th class="lbl cond-h">${condHead(c, ci++)}</th>${cells('cond-c', r => condCell(r, c))}</tr>`;
     });
   }
   if (A.length) {
-    h += `<tr class="grp"><th class="sect act-h" colspan="${span}">動作 / 結果</th></tr>`;
+    h += `<tr class="grp"><th class="sect act-h" colspan="${span}">動作 / 結果</th>${pad}</tr>`;
     A.forEach((a, i) => { h += `<tr>${gcol('', 'act-h', i > 0)}<th class="lbl act-h">${actHead(a, i)}</th>${cells('act-c', r => actCell(r, a))}</tr>`; });
   }
   h += `<tr>${gcol('', 'note-h', false)}<th class="lbl note-h">備考</th>${cells('note-c', noteCell)}</tr>`;
@@ -863,10 +893,10 @@ function tableV(C, A, R){
 }
 
 function renderTable(){
-  inputCell = null; closeCombo();          // 作り直すと元の要素は消えるので、モードも畳む
+  inputCell = null; closeCombo(); closeRowMenu();   // 作り直すと元の要素は消えるので、モードやメニューも畳む
   const { conditions:C, actions:A, rows:R } = state;
   if (!C.length && !A.length) { dom.table.innerHTML = emptyMsg('左のパネルで条件と動作を追加してください'); return; }
-  if (!R.length) { dom.table.innerHTML = emptyMsg('「全組み合わせで表を生成」を押すとルールが作られます<br><span style="font-size:12px">必要なルールだけ手で作る場合は「空のルールを1行追加」</span>'); return; }
+  if (!R.length) { dom.table.innerHTML = emptyMsg('「全組み合わせで表を生成」を押すとルールが作られます<br><span style="font-size:12px">必要なルールだけ手で作る場合は「+ 新規」</span><button type="button" class="btn addrow">+ 新規</button>'); return; }
   dom.table.innerHTML = state.layout === 'h' ? tableH(C, A, R) : tableV(C, A, R);
   updateSelUI();
   layoutSticky();
@@ -1009,7 +1039,8 @@ function copyText(text, what){
 function commit(){ renderTable(); renderStatus(); persist(); }          // 表に関わる変更のあと
 function commitSidebar(){ renderSidebar(); commit(); }                   // 条件・動作の定義が変わったあと
 function renderLayoutSeg(){ dom.layoutSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.layout === state.layout)); }
-function renderAll(){ dom.title.value = state.title || ''; renderLayoutSeg(); commitSidebar(); }
+function renderCrumb(){ dom.crumb.textContent = (state.title || '').trim() || '無題'; }
+function renderAll(){ dom.title.value = state.title || ''; renderCrumb(); renderLayoutSeg(); commitSidebar(); }
 const refreshTableSoon  = debounce(commit, 120);                                        // 名前を打っている間の再描画
 const refreshStatusSoon = debounce(() => { renderStatus(); persist(); }, 150);         // セルに文字を打っている間
 
@@ -1150,6 +1181,51 @@ function simplifyRows(){
   toast(`${before} 行 → ${state.rows.length} 行にまとめました`, true);
 }
 
+/* 選んだルールをすぐ後ろに複製する（Notion の「複製」と同じ） */
+function duplicateRows(){
+  const s = needSel(); if (!s) return;
+  snapshot();
+  const copies = s.map(cloneRow);
+  state.rows.splice(state.rows.indexOf(s[s.length - 1]) + 1, 0, ...copies);
+  selected = new Set(copies.map(r => r.id)); commit();
+  toast(`${copies.length} 件のルールを複製しました`, true);
+}
+
+/* ルールの右クリックメニュー（Notion の行メニューに合わせる） */
+const ROW_ACTS = { dup:() => duplicateRows(), na:() => toggleNa(), up:() => moveSel(-1), down:() => moveSel(1), del:() => deleteRows() };
+function openRowMenu(x, y){
+  closeRowMenu();
+  const t = toggleState();
+  const items = [
+    ['dup', '複製', `${modKey} + D`],
+    ['na', t.naOn ? 'N/A を解除' : 'N/A にする', ''],
+    ['up', '前へ', `${modKey} + Shift + ←`],
+    ['down', '後ろへ', `${modKey} + Shift + →`],
+    ['-'],
+    ['del', '削除', 'Delete', 'danger'],
+  ];
+  const menu = dom.rowMenu;
+  menu.innerHTML = `<div class="mhead">${selected.size} 件のルール</div>` + items.map(it => it[0] === '-' ? '<hr>'
+    : `<button type="button" role="menuitem" data-act="${it[0]}" class="${it[3] || ''}">${escH(it[1])}${it[2] ? `<span class="k">${escH(it[2])}</span>` : ''}</button>`).join('');
+  menu.hidden = false;
+  menu.style.left = '0px'; menu.style.top = '0px';
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  menu.style.left = Math.max(8, Math.min(x, window.innerWidth - mw - 8)) + 'px';
+  menu.style.top  = Math.max(8, Math.min(y, window.innerHeight - mh - 8)) + 'px';
+  const first = menu.querySelector('button'); if (first) first.focus();
+}
+function closeRowMenu(){ if (dom.rowMenu.hidden) return; dom.rowMenu.hidden = true; dom.rowMenu.innerHTML = ''; }
+/* 右クリックしたルールが選ばれていなければ、それだけを選び直す */
+function onTableContextMenu(e){
+  if (e.target.matches('input.cell') && inputCell === e.target) return;     // 入力中はブラウザのメニューに任せる
+  const hit = e.target.closest('th.rule-h[data-rid], tr[data-rid], td[data-rid]');
+  if (!hit) return;
+  e.preventDefault();
+  const id = +hit.dataset.rid;
+  if (!selected.has(id)) { [...selected].forEach(x => setSelected(x, false)); setSelected(id, true); lastClickedRow = id; updateSelUI(); }
+  openRowMenu(e.clientX, e.clientY);
+}
+
 /* ルールのコピーと貼り付け（このツールの中だけで働く） */
 let rowClip = [];
 function copyRows(){
@@ -1168,15 +1244,7 @@ function pasteRows(){
   toast(`${copies.length} 件のルールを貼り付けました`, true);
 }
 
-/* セルのプルダウンは表を作り直さず、その場だけ更新してフォーカスを保つ */
-function onCellSelect(sel){
-  const r = byId(state.rows, +sel.dataset.rid); if (!r) return;
-  const v = sel.value;
-  snapshot();
-  r.cond[+sel.dataset.cid] = v;
-  setCellClass(sel, v === DASH ? 'dash' : '');
-  renderStatus(); persist();
-}
+/* 文字を打てるセル（動作・備考）は表を作り直さず、その場だけ更新してフォーカスを保つ */
 function onCellInput(el){
   const r = byId(state.rows, +el.dataset.rid); if (!r) return;
   touchEdit();
@@ -1190,6 +1258,7 @@ function onCellInput(el){
  *   入力欄はそのまま打てる。▾ や ↓ キーで候補の一覧を出し、選ぶと欄に入る。
  *   一覧は画面に1つだけ持ち、開くときに中身と位置を作り直す。
  * ====================================================================== */
+const EDIT_OPT = '\u0000edit';   // 候補メニューの「自由入力…」を表す値
 let comboInput = null;      // 候補を開いている入力欄
 let comboOptions = [];      // 開いている候補の一覧
 let comboPick = null;       // 選ばれたときの反映先
@@ -1207,11 +1276,12 @@ function openCombo(input, options, onPick){
   closeCombo();
   if (!options.length) return;
   comboInput = input; comboOptions = options; comboPick = onPick;
-  comboActive = options.findIndex(o => o.value === input.value);   // 今の値から選び始める
+  const cur = input.tagName === 'INPUT' ? input.value : (input.dataset.val ?? '');
+  comboActive = options.findIndex(o => o.value === cur);   // 今の値から選び始める
   input.setAttribute('aria-expanded', 'true');
   const menu = dom.comboMenu;
   menu.innerHTML = options.map((o, i) =>
-    `<button type="button" role="option" id="comboOpt${i}" data-i="${i}"${o.value === input.value ? ' class="cur"' : ''}>${escH(o.label)}</button>`).join('');
+    `<button type="button" role="option" id="comboOpt${i}" data-i="${i}"${o.value === cur ? ' class="cur"' : ''}>${o.color ? tagHtml(o.color, o.label) : escH(o.label)}</button>`).join('');
   menu.hidden = false;
   const r = input.getBoundingClientRect();
   menu.style.cssText = `min-width:${r.width}px; left:0; top:0`;
@@ -1241,14 +1311,26 @@ function pickCombo(){
   const v = comboOptions[comboActive].value, pick = comboPick;
   closeCombo(); pick(v);
 }
-/* 欄の種類（動作セルか、条件のグループ欄か）を見て、候補と反映先を決める */
+/* 欄の種類（条件セルか、動作セルか、条件のグループ欄か）を見て、候補と反映先を決める */
 function openComboFor(input){
-  if (input.dataset.aid) {
+  if (input.dataset.cid) {
+    const c = byId(state.conditions, +input.dataset.cid), r = byId(state.rows, +input.dataset.rid);
+    if (!c || !r) return;
+    openCombo(input, condOptions(c), v => {
+      if (v !== condVal(r, c)) { snapshot(); r.cond[c.id] = v; }
+      input.dataset.val = v; input.className = cellClass(pickClass(v)); input.innerHTML = tagv(v, c.values); input.focus();
+      renderStatus(); persist();
+    });
+  } else if (input.dataset.aid) {
     const a = byId(state.actions, +input.dataset.aid), r = byId(state.rows, +input.dataset.rid);
     if (!a || !r) return;
-    openCombo(input, actionOptions(a), v => {
-      recordEdit();
-      r.act[a.id] = v; input.value = v; setCellClass(input, markClass(v)); input.focus();
+    const opts = actionOptions(a);
+    if (input.tagName === 'BUTTON') opts.push({ value:EDIT_OPT, label:'自由入力…' });
+    openCombo(input, opts, v => {
+      if (v === EDIT_OPT) return enterInputMode(input, true);
+      if (v !== actVal(r, a)) { recordEdit(); r.act[a.id] = v; }
+      if (input.tagName === 'INPUT') { input.value = v; setCellClass(input, markClass(v)); input.focus(); }
+      else { const td = input.closest('td'); td.innerHTML = actCell(r, a); td.querySelector('.cell').focus(); }
       renderStatus(); persist();
     });
   } else if (input.dataset.role === 'cgroup') {
@@ -1261,11 +1343,11 @@ function openComboFor(input){
 /* 候補を開いている間のキーは、ほかの処理より先に受け取る（capture 相で登録する） */
 function onComboKeydown(e){
   const el = e.target;
-  if (!(el.matches && el.matches('.combobox > input'))) return;
+  if (!(el.matches && el.matches('.combobox > input, .cell.pick'))) return;
   const stop = () => { e.preventDefault(); e.stopPropagation(); };
   if (comboInput !== el) {
-    // 移動モード（readonly）のときは ↓ をセル移動に使うので、候補は開かない
-    if (!el.readOnly && (e.key === 'ArrowDown' || e.key === 'F4')) { stop(); openComboFor(el); }
+    // 移動モード（readonly）や条件セルでは ↓ をセル移動に使うので、候補は開かない
+    if (el.tagName === 'INPUT' && !el.readOnly && (e.key === 'ArrowDown' || e.key === 'F4')) { stop(); openComboFor(el); }
     return;
   }
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { stop(); moveCombo(e.key === 'ArrowDown' ? 1 : -1); }
@@ -1284,16 +1366,28 @@ let inputCell = null;
 function enterInputMode(el, selectAll){
   if (!el || inputCell === el) return;
   leaveInputMode();
+  if (el.matches('button.cell.act')) {                 // 動作セルはタグのボタンを入力欄に置き換える
+    const r = byId(state.rows, +el.dataset.rid), a = byId(state.actions, +el.dataset.aid); if (!r || !a) return;
+    const td = el.closest('td');
+    td.innerHTML = actInput(r, a);
+    el = td.querySelector('input.cell');
+  }
   inputCell = el;
   el.classList.add('editing');
-  if (el.tagName === 'INPUT') { el.removeAttribute('readonly'); if (selectAll) el.select(); }
+  if (el.tagName === 'INPUT') { el.removeAttribute('readonly'); el.focus(); if (selectAll) el.select(); }
 }
 function leaveInputMode(){
   if (!inputCell) return;
   closeCombo();
-  inputCell.classList.remove('editing');
-  if (inputCell.tagName === 'INPUT') inputCell.setAttribute('readonly', '');
-  inputCell = null;
+  const el = inputCell; inputCell = null;
+  el.classList.remove('editing');
+  if (el.dataset.aid && el.tagName === 'INPUT') {      // 動作セルはタグのボタンに戻す
+    const r = byId(state.rows, +el.dataset.rid), a = byId(state.actions, +el.dataset.aid);
+    const td = el.closest('td'), refocus = document.activeElement === el;
+    if (r && a && td) { td.innerHTML = actCell(r, a); if (refocus) td.querySelector('.cell').focus(); }
+    return;
+  }
+  if (el.tagName === 'INPUT') el.setAttribute('readonly', '');
 }
 /* tbody の行と、その中のセルを並べた格子。縦表でも横表でも「行が見た目の行」になる */
 function cellGrid(){
@@ -1311,10 +1405,12 @@ function nextCell(grid, el, dRow, dCol){
   return next && next !== el ? next : null;
 }
 function moveCell(el, dRow, dCol){
-  const next = nextCell(cellGrid(), el, dRow, dCol); if (!next) return;
+  const next = nextCell(cellGrid(), el, dRow, dCol);
   leaveInputMode();
+  if (!next) return false;
   next.focus();
   if (next.scrollIntoView) next.scrollIntoView({ block:'nearest', inline:'nearest' });
+  return true;
 }
 const ARROWS = { ArrowUp:[-1, 0], ArrowDown:[1, 0], ArrowLeft:[0, -1], ArrowRight:[0, 1] };
 
@@ -1325,18 +1421,21 @@ function onTableKeydown(e){
   const stop = () => { e.preventDefault(); e.stopPropagation(); };
 
   if (e.key === 'Escape') { if (inEdit) { stop(); leaveInputMode(); } return; }
+  const pick = el.classList.contains('pick');    // 条件セルは Notion のセレクトと同じで、Enter で一覧が開く
   if (e.key === 'Enter') {
     stop();
+    if (pick) return openComboFor(el);
     if (!inEdit) return enterInputMode(el, true);
-    leaveInputMode();
     moveCell(el, e.shiftKey ? -1 : 1, 0);       // 確定して上下の隣のセルへ
     return;
   }
   if (inEdit) return;                            // 入力モードでは矢印は文字カーソルに任せる
   const d = ARROWS[e.key];
   if (d) { stop(); return moveCell(el, d[0], d[1]); }
-  // 移動モードのまま文字を打ったら、そのまま入力モードに入って打ち始められる
-  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) enterInputMode(el, true);
+  // 移動モードのまま文字を打ったら、そのまま入力モードに入って打ち始められる（条件セルは一覧が開く）
+  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (pick && !el.classList.contains('act')) { stop(); openComboFor(el); } else enterInputMode(el, true);
+  }
 }
 
 /* ======================================================================
@@ -1415,18 +1514,22 @@ const modKey = isMac ? '⌘' : 'Ctrl';
 const KEYS = [
   ['#', '表のセル：移動モード（セルが青く塗られている状態）'],
   ['セルを移る', '↑ ↓ ← →', '↑ ↓ ← →'],
-  ['入力モードに入る', 'Enter　または　そのまま文字を打つ', 'Enter　または　そのまま文字を打つ'],
+  ['入力モードに入る（動作・備考）', 'Enter　または　そのまま文字を打つ', 'Enter　または　そのまま文字を打つ'],
   ['隣の欄へ', 'Tab / Shift + Tab', 'Tab / Shift + Tab'],
+  ['条件・動作の候補を開く', 'Enter　または　クリック', 'Enter　または　クリック'],
   ['#', '表のセル：入力モード（白くなり文字カーソルが出ている状態）'],
   ['移動モードに戻る', 'Esc', 'Esc'],
   ['確定して下／上のセルへ', 'Enter / Shift + Enter', 'Enter / Shift + Enter'],
-  ['動作セルの候補を開く', '↓　または　F4', '↓'],
+  ['動作セルの候補を開く（入力中）', '↓　または　F4', '↓'],
   ['候補を選ぶ', '↑ / ↓', '↑ / ↓'],
   ['候補を決める', 'Enter', 'Enter'],
   ['候補だけ閉じる', 'Esc', 'Esc'],
   ['#', 'ルールの操作'],
   ['元に戻す', 'Ctrl + Z', '⌘ + Z'],
   ['やり直す', 'Ctrl + Shift + Z　または　Ctrl + Y', '⌘ + Shift + Z'],
+  ['選んだルールを複製', 'Ctrl + D', '⌘ + D'],
+  ['選んだルールを削除', 'Delete', 'Delete'],
+  ['ルールのメニューを開く', '右クリック', '右クリック'],
   ['選んだルールをコピー', 'Ctrl + C', '⌘ + C'],
   ['コピーしたルールを貼り付け', 'Ctrl + V', '⌘ + V'],
   ['選んだルールを前へ／後ろへ', 'Ctrl + Shift + ← / →', '⌘ + Shift + ← / →'],
@@ -1477,14 +1580,17 @@ function dispatchSidebar(kind, e){
 function onKeydown(e){
   if (dom.keysDlg.open) return;                         // 一覧を開いている間は Esc で閉じるだけにする
   const inText = e.target.matches('input[type=text], textarea');
+  const inCell = e.target.matches('.cell');
   if (!(e.ctrlKey || e.metaKey)) {
-    if (e.key === 'Escape' && selected.size) { selected.clear(); renderTable(); }
+    if (e.key === 'Escape' && !dom.rowMenu.hidden) closeRowMenu();
+    else if (e.key === 'Escape' && selected.size) { selected.clear(); renderTable(); }
     else if (e.key === '?' && !inText) { e.preventDefault(); openKeys(); }
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && selected.size && !inText && !inCell) { e.preventDefault(); deleteRows(); }
     return;
   }
-  if (inText) return;                                   // 文字を入力している間は本来の編集操作にゆずる
+  if (inText && !(e.target.readOnly && e.key.toLowerCase() === 'd')) return;   // 文字を入力している間は本来の編集操作にゆずる
   if (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); return moveSel(e.key === 'ArrowLeft' ? -1 : 1); }
-  const actions = { z: () => e.shiftKey ? redo() : undo(), y: redo, c: copyRows, v: pasteRows };
+  const actions = { z: () => e.shiftKey ? redo() : undo(), y: redo, c: copyRows, v: pasteRows, d: duplicateRows };
   const k = e.key.toLowerCase();
   if (Object.hasOwn(actions, k)) { e.preventDefault(); actions[k](); }
 }
@@ -1494,7 +1600,7 @@ function bindEvents(){
 
   // ヘッダー
   dom.title.addEventListener('focus', beginEdit);
-  dom.title.addEventListener('input', e => { touchEdit(); state.title = e.target.value; persist(); });
+  dom.title.addEventListener('input', e => { touchEdit(); state.title = e.target.value; renderCrumb(); persist(); });
   on('#sampleBtn', 'click', () => replaceState(sample(), 'サンプルを読み込みました'));
   on('#newBtn', 'click', () => replaceState(starter(), '新しい表を作成しました'));
   on('#saveJsonBtn', 'click', saveJson);
@@ -1533,15 +1639,23 @@ function bindEvents(){
       lastClickedRow = id; updateSelUI(); return;
     }
     if (e.target.id === 'selAllChk') { state.rows.forEach(r => setSelected(r.id, e.target.checked)); updateSelUI(); return; }
-    // マウスで触ったセルは、そのまま入力モードにする
+    if (e.target.closest('.addrow, .addcol')) return addRow();
+    // マウスで触ったセルは、そのまま入力モードにする（条件セルは値の一覧を開く）
     const box = e.target.closest('.combobox');
     const cell = e.target.closest('.cell') || (box && box.querySelector('.cell'));
-    if (cell) enterInputMode(cell, false);
+    if (!cell) return;
+    if (cell.classList.contains('pick')) { if (comboInput === cell) closeCombo(); else openComboFor(cell); return; }
+    enterInputMode(cell, false);
+  });
+  dom.table.addEventListener('contextmenu', onTableContextMenu);
+  dom.rowMenu.addEventListener('click', e => { const b = e.target.closest('button[data-act]'); if (!b) return; closeRowMenu(); ROW_ACTS[b.dataset.act](); });
+  dom.rowMenu.addEventListener('keydown', e => {
+    const btns = [...dom.rowMenu.querySelectorAll('button')], i = btns.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); btns[(i + (e.key === 'ArrowDown' ? 1 : -1) + btns.length) % btns.length].focus(); }
   });
   dom.table.addEventListener('focusin', e => { if (e.target.matches('input.cell')) beginEdit(); });
   dom.table.addEventListener('focusout', e => { if (inputCell === e.target) leaveInputMode(); });
   dom.table.addEventListener('input', e => { if (e.target.matches('input.cell')) onCellInput(e.target); });
-  dom.table.addEventListener('change', e => { const sel = e.target.closest('select.cell'); if (sel) onCellSelect(sel); });
   dom.table.addEventListener('keydown', onTableKeydown);
 
   // 直接入力＋プルダウンの欄
@@ -1553,16 +1667,17 @@ function bindEvents(){
     if (comboInput === input) closeCombo(); else openComboFor(input);
   });
   document.addEventListener('mousedown', e => {
-    if (comboInput && !dom.comboMenu.contains(e.target) && !(e.target.closest && e.target.closest('.combobox'))) closeCombo();
+    if (comboInput && !dom.comboMenu.contains(e.target) && !(e.target.closest && e.target.closest('.combobox, .cell.pick'))) closeCombo();
+    if (!dom.rowMenu.hidden && !dom.rowMenu.contains(e.target)) closeRowMenu();
   });
   document.addEventListener('keydown', onComboKeydown, true);
   dom.comboMenu.addEventListener('mousedown', e => e.preventDefault());   // 入力欄からフォーカスを奪わない
   document.addEventListener('input', e => { if (comboInput === e.target) closeCombo(); });
-  window.addEventListener('scroll', closeCombo, true);
+  window.addEventListener('scroll', () => { closeCombo(); closeRowMenu(); }, true);
 
   // 全体
   document.addEventListener('keydown', onKeydown);
-  window.addEventListener('resize', debounce(() => { closeCombo(); layoutSticky(); }, 150));
+  window.addEventListener('resize', debounce(() => { closeCombo(); closeRowMenu(); layoutSticky(); }, 150));
 }
 
 /* ======================================================================
