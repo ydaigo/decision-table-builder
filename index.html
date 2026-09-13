@@ -255,37 +255,48 @@
   .dt th, .dt td{border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:0 8px; height:33px; text-align:center; white-space:nowrap; background:var(--bg);}
   .dt thead tr:first-child th{border-top:1px solid var(--line);}
   .dt tr > :first-child{border-left:1px solid var(--line);}
-  .dt thead th{position:sticky; top:0; z-index:2; background:var(--bg); font-weight:400; color:var(--sub); font-size:14px;}
+  /* 固定するものの重なり順：見出し行(3) ＞ 区分の見出し(2) ＞ 左に固定した列(1) */
+  .dt thead th{position:sticky; top:0; z-index:3; background:var(--bg); font-weight:400; color:var(--sub); font-size:14px;}
   .dt tr.grp th{
     font-size:12px; font-weight:500; padding:0 8px; height:30px; text-align:left; color:var(--sub);
   }
   .dt tr.grp th.cond-h, .dt tr.grp th.act-h, .dt tr.gsub th{background:var(--bg);}
-  .dt tr.grp th.cond-h::before, .dt tr.grp th.act-h::before{content:""; display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:8px; vertical-align:-1px; background:var(--tv-blue-ink); opacity:.55;}
-  .dt tr.grp th.act-h::before{background:var(--tv-orange-ink);}
+  .dt tr.grp th.cond-h .sect-l::before, .dt tr.grp th.act-h .sect-l::before{content:""; display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:8px; vertical-align:-1px; background:var(--tv-blue-ink); opacity:.55;}
+  .dt tr.grp th.act-h .sect-l::before{background:var(--tv-orange-ink);}
+  /* 何列にもまたがる見出し（「条件」「動作 / 結果」やグループ名）は、セルの中で文字だけを固定して横スクロールでも読めるようにする */
+  .sect-l{position:sticky; left:calc(var(--frozenw, 0px) - var(--padl, 0px)); display:inline-block; background:inherit;}
   .dt th.note-h, .dt th.no, .dt th.chk{color:var(--faint); font-weight:400;}
   .dt td.no{color:var(--faint); font-size:12px;}
-  .dt tbody tr:hover > td{background:color-mix(in srgb, var(--panel2) 50%, var(--bg));}
-  .dt tr.sel td, .dt td.sel{background:var(--sel) !important;}
-  .dt tr.na td, .dt td.na{background:var(--na-bg) !important; color:var(--na-ink);}
+  /* 選択・対象外・ホバーの色は半透明なので、不透明な下地（--bg）に重ねて塗る。
+     そのまま使うと、左や上に固定した行・列が透けて、後ろを流れる中身が見えてしまう */
+  .dt tbody tr:hover > td{--tint:color-mix(in srgb, var(--panel2) 50%, transparent); background:linear-gradient(var(--tint), var(--tint)) var(--bg);}
+  .dt tr.sel td, .dt td.sel{--tint:var(--sel); background:linear-gradient(var(--tint), var(--tint)) var(--bg) !important;}
+  .dt tr.na td, .dt td.na{--tint:var(--na-bg); background:linear-gradient(var(--tint), var(--tint)) var(--bg) !important; color:var(--na-ink);}
   .dt tr.na td .cell, .dt td.na .cell{color:var(--na-ink);}
   .dt tr.na td .tagv, .dt td.na .tagv{opacity:.45;}
   .dt tr.na td.no{text-decoration:line-through;}
-  /* 縦表：見出し列は左に固定。グループ列があるときはその幅（--gw）だけ右へずらす */
-  .dt.v th.lbl{position:sticky; left:var(--gw, 0px); z-index:1; text-align:left; background:var(--bg); padding:0 10px; color:var(--ink); font-weight:400;}
+  /* 縦表：見出し列は左に固定。グループ列があるときはその幅（--gw）だけ右へずらす
+     （固定位置は表示領域の余白 --padl の外側にそろえ、固定した列の左から中身がのぞかないようにする） */
+  .dt.v th.lbl{position:sticky; left:calc(var(--gw, 0px) - var(--padl, 0px)); z-index:1; text-align:left; background:var(--bg); padding:0 10px; color:var(--ink); font-weight:400;}
   .dt.v th.lbl.cond-h, .dt.v th.lbl.act-h{color:var(--ink); background:var(--bg);}
   .dt.v th.gname{
-    position:sticky; left:0; z-index:1; text-align:left; background:var(--bg);
+    position:sticky; left:calc(0px - var(--padl, 0px)); z-index:1; text-align:left; background:var(--bg);
     font-weight:400; font-size:13px; color:var(--sub); padding:0 10px;
   }
   .dt.v th.gname.cond-h, .dt.v th.gname.act-h, .dt.v th.gname.note-h{background:var(--bg);}
   .dt.v th.gname.cont{border-top:none;}
-  .dt.v thead th.corner{z-index:3;}
+  .dt.v thead th.corner{z-index:4;}
   .dt.v th.rule-h{font-weight:400; min-width:3.6em; color:var(--sub); font-size:13px;}
-  .dt.v th.rule-h.na{color:var(--na-ink); text-decoration:line-through; background:var(--na-bg);}
-  .dt.v th.rule-h.sel{background:var(--sel); color:var(--ink);}
+  .dt.v th.rule-h.na{--tint:var(--na-bg); color:var(--na-ink); text-decoration:line-through; background:linear-gradient(var(--tint), var(--tint)) var(--bg);}
+  .dt.v th.rule-h.sel{--tint:var(--sel); background:linear-gradient(var(--tint), var(--tint)) var(--bg); color:var(--ink);}
   .dt.v th.rule-h label, .dt.v th.corner label{cursor:pointer; display:inline-flex; gap:6px; align-items:center;}
   .dt.v th.corner label{font-weight:400; font-size:13px; color:var(--sub);}
-  .dt.v tr.grp th.sect{position:sticky; left:0; z-index:1; text-align:left;}
+  /* 縦表：「条件」「動作 / 結果」の区分は見出し行のすぐ下（--headh）に固定し、次の区分が来たら入れ替わる */
+  .dt.v tr.grp th.sect{position:sticky; top:calc(var(--headh, 0px) - var(--padt, 0px)); z-index:2; text-align:left;}
+  /* 横表：左端のチェック列と番号列は左に固定する（縦表の見出し列にあたる） */
+  .dt.h th.chk, .dt.h td.chk{position:sticky; left:calc(0px - var(--padl, 0px)); z-index:1;}
+  .dt.h th.no,  .dt.h td.no {position:sticky; left:calc(var(--chkw, 0px) - var(--padl, 0px)); z-index:1;}
+  .dt.h thead th.chk, .dt.h thead th.no{z-index:4;}
   .dt.h th.gspan{font-weight:400; font-size:12px; color:var(--sub);}
   .dt.h thead tr:last-child th.cond-h, .dt.h thead tr:last-child th.act-h{color:var(--sub); background:var(--bg); text-align:left;}
   .dt.h thead tr:last-child th{text-align:left;}
@@ -294,6 +305,7 @@
   /* Notion の「+ 新規」行と「+」列 */
   .dt td.addrow, .dt th.addcol{color:var(--faint); text-align:left; cursor:pointer; user-select:none; padding:0 8px; font-size:14px;}
   .dt td.addrow:hover, .dt th.addcol:hover{background:var(--panel2); color:var(--sub);}
+  .dt td.addrow .sect-l{left:calc(0px - var(--padl, 0px));}   /* 左端の列がない行なので、固定位置は表の左端にそろえる */
   .dt th.addcol{text-align:center; min-width:34px; font-size:16px; line-height:1; border-right:none; border-top:none !important; color:var(--faint);}
   .dt.v td.addpad{border:none; background:transparent !important; padding:0; min-width:0; width:34px;}
 
@@ -866,17 +878,19 @@ const ruleChk  = (r, i) => `<input type="checkbox" class="rowsel" data-rid="${r.
 const condHead = (c, i) => `<span class="tag c">C${i+1}</span>${escH(c.name)}`;
 const actHead  = (a, i) => `<span class="tag a">A${i+1}</span>${escH(a.name)}`;
 const emptyMsg = msg => `<div class="empty">${msg}</div>`;
+/* 何列にもまたがるセルの中身。横スクロールしても文字が流れないように包む */
+const sectLbl = text => `<span class="sect-l">${text}</span>`;
 
 /* 横表：1ルール = 1行 */
 function tableH(C, A, R){
   let h = '<table class="dt h"><thead>';
   h += `<tr class="grp"><th class="chk"></th><th class="no"></th>`
-     + (C.length ? `<th class="cond-h" colspan="${C.length}">条件</th>` : '')
-     + (A.length ? `<th class="act-h" colspan="${A.length}">動作 / 結果</th>` : '')
+     + (C.length ? `<th class="cond-h" colspan="${C.length}">${sectLbl('条件')}</th>` : '')
+     + (A.length ? `<th class="act-h" colspan="${A.length}">${sectLbl('動作 / 結果')}</th>` : '')
      + '<th class="note-h"></th></tr>';
   if (hasCondGroups()) {
     h += '<tr class="gsub"><th class="chk"></th><th class="no"></th>'
-       + condRuns().map(run => `<th class="cond-h gspan" colspan="${run.items.length}">${escH(run.group)}</th>`).join('')
+       + condRuns().map(run => `<th class="cond-h gspan" colspan="${run.items.length}">${sectLbl(escH(run.group))}</th>`).join('')
        + (A.length ? `<th class="act-h" colspan="${A.length}"></th>` : '') + '<th class="note-h"></th></tr>';
   }
   h += '<tr><th class="chk"><input type="checkbox" id="selAllChk" title="全選択"></th><th class="no">#</th>'
@@ -888,7 +902,7 @@ function tableH(C, A, R){
     + C.map(c => `<td class="cond-c">${condCell(r, c)}</td>`).join('')
     + A.map(a => `<td class="act-c">${actCell(r, a)}</td>`).join('')
     + `<td class="note-c">${noteCell(r)}</td></tr>`).join('');
-  h += `<tr class="addtr"><td class="addrow" colspan="${C.length + A.length + 3}" title="ルールを追加">+ 新規</td></tr>`;
+  h += `<tr class="addtr"><td class="addrow" colspan="${C.length + A.length + 3}" title="ルールを追加">${sectLbl('+ 新規')}</td></tr>`;
   return h + '</tbody></table>';
 }
 
@@ -904,14 +918,14 @@ function tableV(C, A, R){
         + R.map((r, i) => `<th class="rule-h ${rowCls(r)}" data-rid="${r.id}"><label>${ruleChk(r, i)} R${i+1}</label></th>`).join('')
         + '<th class="addcol" title="ルールを追加">+</th></tr></thead><tbody>';
   if (C.length) {
-    h += `<tr class="grp"><th class="sect cond-h" colspan="${span}">条件</th>${pad}</tr>`;
+    h += `<tr class="grp"><th class="sect cond-h" colspan="${span}">${sectLbl('条件')}</th>${pad}</tr>`;
     let ci = 0;
     for (const run of condRuns()) run.items.forEach((c, k) => {
       h += `<tr>${gcol(k ? '' : escH(run.group), 'cond-h', k > 0)}<th class="lbl cond-h">${condHead(c, ci++)}</th>${cells('cond-c', r => condCell(r, c))}</tr>`;
     });
   }
   if (A.length) {
-    h += `<tr class="grp"><th class="sect act-h" colspan="${span}">動作 / 結果</th>${pad}</tr>`;
+    h += `<tr class="grp"><th class="sect act-h" colspan="${span}">${sectLbl('動作 / 結果')}</th>${pad}</tr>`;
     A.forEach((a, i) => { h += `<tr>${gcol('', 'act-h', i > 0)}<th class="lbl act-h">${actHead(a, i)}</th>${cells('act-c', r => actCell(r, a))}</tr>`; });
   }
   h += `<tr>${gcol('', 'note-h', false)}<th class="lbl note-h">備考</th>${cells('note-c', noteCell)}</tr>`;
@@ -928,16 +942,27 @@ function renderTable(){
   layoutSticky();
 }
 
-/* 見出し行を積み重ねて固定し、縦表ではグループ列の幅だけ見出し列をずらす */
+/* 見出し行を積み重ねて上に固定し、左に固定する列の幅を測って後続の固定位置をそろえる */
 function layoutSticky(){
   const t = dom.table.querySelector('table.dt'); if (!t) return;
+  /* 固定の基準は表示領域の内側（余白のぶん内側）なので、余白を引いて表示領域の端にぴったり止める。
+     こうしないと固定した見出しや列の外側を、スクロール中の中身がのぞいてしまう */
+  const cs = getComputedStyle(dom.table);
+  const padl = parseFloat(cs.paddingLeft) || 0, padt = parseFloat(cs.paddingTop) || 0;
+  t.style.setProperty('--padl', padl + 'px');
+  t.style.setProperty('--padt', padt + 'px');
   let top = 0;
   t.querySelectorAll('thead tr').forEach(tr => {
-    tr.querySelectorAll('th').forEach(th => th.style.top = top + 'px');
+    tr.querySelectorAll('th').forEach(th => th.style.top = (top - padt) + 'px');
     top += tr.getBoundingClientRect().height;
   });
-  const g = t.querySelector('tbody th.gname');
-  t.style.setProperty('--gw', g ? g.getBoundingClientRect().width + 'px' : '0px');
+  t.style.setProperty('--headh', top + 'px');                 // 見出し行の高さ。区分の見出しはこの下に固定する
+  const w = sel => { const el = t.querySelector(sel); return el ? el.getBoundingClientRect().width : 0; };
+  const chkw = w('tbody td.chk');                       // 横表：チェック列
+  t.style.setProperty('--gw', w('tbody th.gname') + 'px');    // 縦表：グループ列の幅だけ見出し列を右へずらす
+  t.style.setProperty('--chkw', chkw + 'px');                 // 横表：番号列はチェック列の右へ
+  /* 何列にもまたがる見出しの文字は、左に固定した列に隠れない位置で止める */
+  t.style.setProperty('--frozenw', (t.classList.contains('h') ? chkw + w('tbody td.no') : 0) + 'px');
 }
 
 /* ======================================================================
