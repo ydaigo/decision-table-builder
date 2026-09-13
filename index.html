@@ -252,21 +252,24 @@
 
   /* ========== 表（Notion のテーブルビュー） ========== */
   table.dt{
+    --cellpad:8px; --cellline:1px;   /* セルの内側余白と罫線。中の文字を固定する位置にも使う */
     border-collapse:separate; border-spacing:0; font-size:14px; background:var(--bg); font-variant-numeric:tabular-nums;
   }
-  .dt th, .dt td{border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:0 8px; height:33px; text-align:center; white-space:nowrap; background:var(--bg);}
+  .dt th, .dt td{border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:0 var(--cellpad); height:33px; text-align:center; white-space:nowrap; background:var(--bg);}
   .dt thead tr:first-child th{border-top:1px solid var(--line);}
-  .dt tr > :first-child{border-left:1px solid var(--line);}
+  .dt tr > :first-child{border-left:var(--cellline) solid var(--line);}
   /* 固定するものの重なり順：見出し行(3) ＞ 区分の見出し(2) ＞ 左に固定した列(1) */
   .dt thead th{position:sticky; top:0; z-index:3; background:var(--bg); font-weight:400; color:var(--sub); font-size:14px;}
   .dt tr.grp th{
-    font-size:12px; font-weight:500; padding:0 8px; height:30px; text-align:left; color:var(--sub);
+    font-size:12px; font-weight:500; padding:0 var(--cellpad); height:30px; text-align:left; color:var(--sub);
   }
   .dt tr.grp th.cond-h, .dt tr.grp th.act-h, .dt tr.gsub th{background:var(--bg);}
   .dt tr.grp th.cond-h .sect-l::before, .dt tr.grp th.act-h .sect-l::before{content:""; display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:8px; vertical-align:-1px; background:var(--tv-blue-ink); opacity:.55;}
   .dt tr.grp th.act-h .sect-l::before{background:var(--tv-orange-ink);}
-  /* 何列にもまたがる見出し（「条件」「動作 / 結果」やグループ名）は、セルの中で文字だけを固定して横スクロールでも読めるようにする */
-  .sect-l{position:sticky; left:var(--frozenw, 0px); display:inline-block; background:inherit;}
+  /* 何列にもまたがる見出し（「条件」「動作 / 結果」やグループ名）は、セルの中で文字だけを固定して横スクロールでも読めるようにする。
+     止める位置にセルの内側余白（と左端のセルなら罫線）を足しておくと、文字が最初の位置から動かずにそのまま止まる */
+  .sect-l{position:sticky; left:calc(var(--frozenw, 0px) + var(--cellpad, 0px)); display:inline-block; background:inherit;}
+  .dt tr > :first-child > .sect-l{left:calc(var(--frozenw, 0px) + var(--cellpad, 0px) + var(--cellline, 0px));}
   .dt th.note-h, .dt th.no, .dt th.chk{color:var(--faint); font-weight:400;}
   .dt td.no{color:var(--faint); font-size:12px;}
   /* 選択・対象外・ホバーの色は半透明なので、不透明な下地（--bg）に重ねて塗る。
@@ -306,7 +309,7 @@
   /* Notion の「+ 新規」行と「+」列 */
   .dt td.addrow, .dt th.addcol{color:var(--faint); text-align:left; cursor:pointer; user-select:none; padding:0 8px; font-size:14px;}
   .dt td.addrow:hover, .dt th.addcol:hover{background:var(--panel2); color:var(--sub);}
-  .dt td.addrow .sect-l{left:0;}   /* 左端の列がない行なので、固定位置は表の左端にそろえる */
+  .dt td.addrow .sect-l{left:calc(var(--cellpad, 0px) + var(--cellline, 0px));}   /* 左端の列がない行なので、固定位置は表の左端にそろえる */
   .dt th.addcol{text-align:center; min-width:34px; font-size:16px; line-height:1; border-right:none; border-top:none !important; color:var(--faint);}
   .dt.v td.addpad{border:none; background:transparent !important; padding:0; min-width:0; width:34px;}
 

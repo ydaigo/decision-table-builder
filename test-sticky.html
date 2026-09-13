@@ -65,8 +65,10 @@ function measure(win, layout){
 
   /* 固定したものはスクロールしてもまったく動かない（少しずれてから止まる、ということがない） */
   const frozenSelectors = layout === 'v'
-    ? { 'グループ列':'tbody th.gname', '条件名・動作名の列':'tbody th.lbl', '見出し行':'thead th.corner' }
-    : { 'チェック列':'tbody td.chk', 'ルール番号の列':'tbody td.no', '見出し行':'thead th.chk' };
+    ? { 'グループ列':'tbody th.gname', '条件名・動作名の列':'tbody th.lbl', '見出し行':'thead th.corner',
+        '「条件」の文字':'tr.grp th.sect.cond-h .sect-l', '「動作 / 結果」の文字':'tr.grp th.sect.act-h .sect-l' }
+    : { 'チェック列':'tbody td.chk', 'ルール番号の列':'tbody td.no', '見出し行':'thead th.chk',
+        '「条件」の文字':'thead tr.grp th.cond-h .sect-l', '「+ 新規」の文字':'td.addrow .sect-l' };
   scrollTo(0, 0);
   const at0 = Object.fromEntries(Object.entries(frozenSelectors).map(([k, s]) => [k, r(s)]));
   const slips = [];
@@ -82,6 +84,7 @@ function measure(win, layout){
     slips.length === 0, slips.length ? slips.join(' / ') : Object.keys(frozenSelectors).join('・'));
 
   scrollTo(wrap.scrollWidth, wrap.scrollHeight);   // 右下の端まで送る
+  const lead = cssVar('--cellpad') + cssVar('--cellline');   // 左端のセルの中で文字が始まる位置
   if (layout === 'v') {
     const gw = cssVar('--gw'), headh = cssVar('--headh');
     headStacked('v: ルール番号の見出し行が上に固定されている');
@@ -89,7 +92,7 @@ function measure(win, layout){
     atLeft('v: 条件名・動作名の列がグループ列の右に固定されている', 'tbody th.lbl', gw);
     atLeft('v: 左上の角が左に固定されている', 'thead th.gname.corner');
     atTop ('v: 区分（条件/動作）の見出しが見出し行の下に固定されている', 'tr.grp th.sect', headh);
-    atLeft('v: 区分の見出しの文字が左に残っている', 'tr.grp th.sect .sect-l');
+    atLeft('v: 区分の見出しの文字が左に残っている', 'tr.grp th.sect .sect-l', lead);
     const o = origin(), add = r('thead th.addcol');
     check('v: 「+ 新規」列は固定せず流れる（固定は見出しと左の列だけ）', add.right < o.box.right + 1, `right=${px(add.right)}`);
   } else {
@@ -105,7 +108,7 @@ function measure(win, layout){
     };
     labelVisible('h: 「条件」のラベルが固定した列に隠れず見えている', 'thead tr.grp th.cond-h .sect-l');
     labelVisible('h: 「動作 / 結果」のラベルが固定した列に隠れず見えている', 'thead tr.grp th.act-h .sect-l');
-    atLeft('h: 「+ 新規」の文字が左に残っている', 'td.addrow .sect-l');
+    atLeft('h: 「+ 新規」の文字が左に残っている', 'td.addrow .sect-l', lead);
     const c = r('tbody td.chk'), n = r('tbody td.no');
     check('h: チェック列と番号列が重ならない', n.left >= c.right - 1, `chk.right=${px(c.right)} no.left=${px(n.left)}`);
     /* グループ名はその列がある間だけ固定される。横に送った量よりラベルの動きが小さく、
