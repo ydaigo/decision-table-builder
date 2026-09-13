@@ -241,7 +241,9 @@
   }
   .selinfo{color:var(--sub); margin-left:auto; font-variant-numeric:tabular-nums;}
 
-  .tableWrap{flex:1; overflow:auto; padding:8px 48px 40px;}
+  /* 左と上の余白は padding ではなく border で取る。border はスクロールする範囲の外なので、
+     固定した見出し・列はその場から 1px も動かずに止まり、外側を中身がのぞくこともない */
+  .tableWrap{flex:1; overflow:auto; border-left:48px solid var(--bg); border-top:8px solid var(--bg); padding:0 48px 40px 0;}
   .empty{
     display:flex; align-items:center; justify-content:flex-start; padding-top:24px; height:100%; color:var(--sub); font-size:14px;
     text-align:left; flex-direction:column; gap:4px; line-height:1.7; align-items:flex-start;
@@ -264,7 +266,7 @@
   .dt tr.grp th.cond-h .sect-l::before, .dt tr.grp th.act-h .sect-l::before{content:""; display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:8px; vertical-align:-1px; background:var(--tv-blue-ink); opacity:.55;}
   .dt tr.grp th.act-h .sect-l::before{background:var(--tv-orange-ink);}
   /* 何列にもまたがる見出し（「条件」「動作 / 結果」やグループ名）は、セルの中で文字だけを固定して横スクロールでも読めるようにする */
-  .sect-l{position:sticky; left:calc(var(--frozenw, 0px) - var(--padl, 0px)); display:inline-block; background:inherit;}
+  .sect-l{position:sticky; left:var(--frozenw, 0px); display:inline-block; background:inherit;}
   .dt th.note-h, .dt th.no, .dt th.chk{color:var(--faint); font-weight:400;}
   .dt td.no{color:var(--faint); font-size:12px;}
   /* 選択・対象外・ホバーの色は半透明なので、不透明な下地（--bg）に重ねて塗る。
@@ -275,12 +277,11 @@
   .dt tr.na td .cell, .dt td.na .cell{color:var(--na-ink);}
   .dt tr.na td .tagv, .dt td.na .tagv{opacity:.45;}
   .dt tr.na td.no{text-decoration:line-through;}
-  /* 縦表：見出し列は左に固定。グループ列があるときはその幅（--gw）だけ右へずらす
-     （固定位置は表示領域の余白 --padl の外側にそろえ、固定した列の左から中身がのぞかないようにする） */
-  .dt.v th.lbl{position:sticky; left:calc(var(--gw, 0px) - var(--padl, 0px)); z-index:1; text-align:left; background:var(--bg); padding:0 10px; color:var(--ink); font-weight:400;}
+  /* 縦表：見出し列は左に固定。グループ列があるときはその幅（--gw）だけ右へずらす */
+  .dt.v th.lbl{position:sticky; left:var(--gw, 0px); z-index:1; text-align:left; background:var(--bg); padding:0 10px; color:var(--ink); font-weight:400;}
   .dt.v th.lbl.cond-h, .dt.v th.lbl.act-h{color:var(--ink); background:var(--bg);}
   .dt.v th.gname{
-    position:sticky; left:calc(0px - var(--padl, 0px)); z-index:1; text-align:left; background:var(--bg);
+    position:sticky; left:0; z-index:1; text-align:left; background:var(--bg);
     font-weight:400; font-size:13px; color:var(--sub); padding:0 10px;
   }
   .dt.v th.gname.cond-h, .dt.v th.gname.act-h, .dt.v th.gname.note-h{background:var(--bg);}
@@ -292,10 +293,10 @@
   .dt.v th.rule-h label, .dt.v th.corner label{cursor:pointer; display:inline-flex; gap:6px; align-items:center;}
   .dt.v th.corner label{font-weight:400; font-size:13px; color:var(--sub);}
   /* 縦表：「条件」「動作 / 結果」の区分は見出し行のすぐ下（--headh）に固定し、次の区分が来たら入れ替わる */
-  .dt.v tr.grp th.sect{position:sticky; top:calc(var(--headh, 0px) - var(--padt, 0px)); z-index:2; text-align:left;}
+  .dt.v tr.grp th.sect{position:sticky; top:var(--headh, 0px); z-index:2; text-align:left;}
   /* 横表：左端のチェック列と番号列は左に固定する（縦表の見出し列にあたる） */
-  .dt.h th.chk, .dt.h td.chk{position:sticky; left:calc(0px - var(--padl, 0px)); z-index:1;}
-  .dt.h th.no,  .dt.h td.no {position:sticky; left:calc(var(--chkw, 0px) - var(--padl, 0px)); z-index:1;}
+  .dt.h th.chk, .dt.h td.chk{position:sticky; left:0; z-index:1;}
+  .dt.h th.no,  .dt.h td.no {position:sticky; left:var(--chkw, 0px); z-index:1;}
   .dt.h thead th.chk, .dt.h thead th.no{z-index:4;}
   .dt.h th.gspan{font-weight:400; font-size:12px; color:var(--sub);}
   .dt.h thead tr:last-child th.cond-h, .dt.h thead tr:last-child th.act-h{color:var(--sub); background:var(--bg); text-align:left;}
@@ -305,7 +306,7 @@
   /* Notion の「+ 新規」行と「+」列 */
   .dt td.addrow, .dt th.addcol{color:var(--faint); text-align:left; cursor:pointer; user-select:none; padding:0 8px; font-size:14px;}
   .dt td.addrow:hover, .dt th.addcol:hover{background:var(--panel2); color:var(--sub);}
-  .dt td.addrow .sect-l{left:calc(0px - var(--padl, 0px));}   /* 左端の列がない行なので、固定位置は表の左端にそろえる */
+  .dt td.addrow .sect-l{left:0;}   /* 左端の列がない行なので、固定位置は表の左端にそろえる */
   .dt th.addcol{text-align:center; min-width:34px; font-size:16px; line-height:1; border-right:none; border-top:none !important; color:var(--faint);}
   .dt.v td.addpad{border:none; background:transparent !important; padding:0; min-width:0; width:34px;}
 
@@ -418,7 +419,7 @@
     .body{flex-direction:column;}
     aside{width:auto; border-right:none; border-bottom:1px solid var(--line);}
     .page-head, .toolbar, .status, .tableWrap{padding-left:16px; padding-right:16px;}
-    .tableWrap{min-height:320px;}
+    .tableWrap{min-height:320px; border-left-width:16px; padding-left:0;}
   }
 </style>
 <script>
@@ -945,15 +946,9 @@ function renderTable(){
 /* 見出し行を積み重ねて上に固定し、左に固定する列の幅を測って後続の固定位置をそろえる */
 function layoutSticky(){
   const t = dom.table.querySelector('table.dt'); if (!t) return;
-  /* 固定の基準は表示領域の内側（余白のぶん内側）なので、余白を引いて表示領域の端にぴったり止める。
-     こうしないと固定した見出しや列の外側を、スクロール中の中身がのぞいてしまう */
-  const cs = getComputedStyle(dom.table);
-  const padl = parseFloat(cs.paddingLeft) || 0, padt = parseFloat(cs.paddingTop) || 0;
-  t.style.setProperty('--padl', padl + 'px');
-  t.style.setProperty('--padt', padt + 'px');
   let top = 0;
   t.querySelectorAll('thead tr').forEach(tr => {
-    tr.querySelectorAll('th').forEach(th => th.style.top = (top - padt) + 'px');
+    tr.querySelectorAll('th').forEach(th => th.style.top = top + 'px');
     top += tr.getBoundingClientRect().height;
   });
   t.style.setProperty('--headh', top + 'px');                 // 見出し行の高さ。区分の見出しはこの下に固定する

@@ -37,10 +37,10 @@ function measure(win, layout){
   const cssVar = n => parseFloat(win.getComputedStyle(t).getPropertyValue(n)) || 0;
 
   const scrollTo = (x, y) => { wrap.scrollLeft = x; wrap.scrollTop = y; };
-  /* 固定したものは表示領域の端にぴったり止まる（余白の外側から中身がのぞかない） */
+  /* 固定の基準はスクロールする範囲の内側の角（余白は border で取っているのでその内側） */
   const origin = () => {
-    const box = wrap.getBoundingClientRect();
-    return { x:box.left, y:box.top, box };
+    const box = wrap.getBoundingClientRect(), cs = win.getComputedStyle(wrap);
+    return { x:box.left + parseFloat(cs.borderLeftWidth), y:box.top + parseFloat(cs.borderTopWidth), box };
   };
   const atLeft = (name, sel, offset = 0) => {
     const o = origin(), b = r(sel);
@@ -62,6 +62,24 @@ function measure(win, layout){
     }
     check(name, ok, `実際/期待 = ${detail.join(', ')}`);
   };
+
+  /* 固定したものはスクロールしてもまったく動かない（少しずれてから止まる、ということがない） */
+  const frozenSelectors = layout === 'v'
+    ? { 'グループ列':'tbody th.gname', '条件名・動作名の列':'tbody th.lbl', '見出し行':'thead th.corner' }
+    : { 'チェック列':'tbody td.chk', 'ルール番号の列':'tbody td.no', '見出し行':'thead th.chk' };
+  scrollTo(0, 0);
+  const at0 = Object.fromEntries(Object.entries(frozenSelectors).map(([k, s]) => [k, r(s)]));
+  const slips = [];
+  for (const shift of [1, 5, 20, 48, 120, 400]) {
+    scrollTo(shift, shift);
+    for (const [k, s] of Object.entries(frozenSelectors)) {
+      const now = r(s), was = at0[k];
+      const moved = k === '見出し行' ? now.top - was.top : now.left - was.left;   // 列は左、見出し行は上を見る
+      if (Math.abs(moved) > 0.5) slips.push(`${k}が ${shift}px スクロールで ${px(moved)}px ずれた`);
+    }
+  }
+  check(`${layout}: 固定したものはスクロールしても少しも動かない`,
+    slips.length === 0, slips.length ? slips.join(' / ') : Object.keys(frozenSelectors).join('・'));
 
   scrollTo(wrap.scrollWidth, wrap.scrollHeight);   // 右下の端まで送る
   if (layout === 'v') {
