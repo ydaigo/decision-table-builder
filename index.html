@@ -364,14 +364,8 @@
       <button class="add-btn" id="addRowBtn" style="margin-top:8px">+ 空のルールを1行追加</button>
     </section>
     <p class="hint">
-      値は「○, ×」のようにカンマ区切り。3値以上も、○× 以外の言葉も使えます。<br>
-      グループ名を付けると、同じグループが続く条件が表の上でひとまとまりになります。並び順は ↑↓ で変えられます。<br>
-      表の条件セルはプルダウンで選びます。列見出しに選べる値が並ぶので、そこを見れば何を入れられるか分かります。<br>
       「-」は「この条件は結果に影響しない」の意味です。<br>
-      動作のセルとグループ欄は、直接入力しても、右の ▾ から候補を選んでも構いません。動作の候補には ○ / × と、その列ですでに使った値が並びます。<br>
-      表のセルには移動モードと入力モードがあります（Notion と同じ考え方）。青く塗られているときは矢印でセルを移り、<kbd>Enter</kbd> で入力モードに入ります。白くなったら文字を打て、<kbd>Esc</kbd> で移動モードに戻ります。<br>
-      条件を後から追加すると既存のルールが自動で展開され、再生成しても入力済みの動作は引き継がれます。<br>
-      元に戻す・コピー・貼り付けはショートカットキーで行えます。一覧は右上の「ショートカット」または <kbd>?</kbd> で開きます。<br>
+      セルは矢印で移動、<kbd>Enter</kbd> で入力、<kbd>Esc</kbd> で移動に戻ります。ほかのキーは <kbd>?</kbd> で一覧。<br>
       編集内容はこのブラウザに自動保存されます。
     </p>
   </aside>
@@ -405,8 +399,7 @@
   </form>
   <table class="keys"><thead id="keysHead"></thead><tbody id="keysBody"></tbody></table>
   <p class="dlg-note">
-    ルールのコピーと貼り付けは、このツールの中だけで働きます。文字を入力している間は、そのまま文字の編集に使われます。<br>
-    閉じるには <kbd>Esc</kbd> を押すか、外側をクリックしてください。
+    ルールのコピーと貼り付けは、このツールの中だけで働きます。<kbd>Esc</kbd> か外側のクリックで閉じます。
   </p>
 </dialog>
 
@@ -645,7 +638,7 @@ function comboField(attrs, value, cls, opt = {}){
 }
 const groupField = c => comboField(`data-role="cgroup"`, c.group || '', '', {
   placeholder: `${DASH}（グループなし）`, label:'条件のグループ',
-  title:'グループ名。直接入力するか、▾ から既存のグループを選べます',
+  title:'直接入力するか、▾ から選べます',
 });
 /* グループの候補：なし + すでに使われているグループ名 */
 const groupOptions = () => [
@@ -721,7 +714,7 @@ function actCell(r, a){
   const v = actVal(r, a);
   return comboField(`data-rid="${r.id}" data-aid="${a.id}"`, v, cellClass(markClass(v)), {
     placeholder:'自由入力', label:a.name, readonly:true,
-    title:`${a.name}　Enter で入力モード、Esc で移動モード。入力モード中は ▾ や ↓ で ○ / × やこの列で使った値を選べます`,
+    title:`${a.name}　Enter で入力、Esc で移動。入力中は ▾ や ↓ で候補`,
   });
 }
 const noteCell = r => `<input type="text" class="cell note" value="${escH(r.note || '')}" data-rid="${r.id}" placeholder="備考" aria-label="備考" title="Enter で入力モード、Esc で移動モード" readonly>`;
