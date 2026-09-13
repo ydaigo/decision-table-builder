@@ -262,7 +262,7 @@
   .dt tr.grp th.cond-h, .dt tr.grp th.act-h, .dt tr.gsub th{background:var(--bg);}
   .dt tr.grp th.cond-h::before, .dt tr.grp th.act-h::before{content:""; display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:8px; vertical-align:-1px; background:var(--tv-blue-ink); opacity:.55;}
   .dt tr.grp th.act-h::before{background:var(--tv-orange-ink);}
-  .dt th.note-h, .dt th.no, .dt th.sel{color:var(--faint); font-weight:400;}
+  .dt th.note-h, .dt th.no, .dt th.chk{color:var(--faint); font-weight:400;}
   .dt td.no{color:var(--faint); font-size:12px;}
   .dt tbody tr:hover > td{background:color-mix(in srgb, var(--panel2) 50%, var(--bg));}
   .dt tr.sel td, .dt td.sel{background:var(--sel) !important;}
@@ -289,7 +289,7 @@
   .dt.h th.gspan{font-weight:400; font-size:12px; color:var(--sub);}
   .dt.h thead tr:last-child th.cond-h, .dt.h thead tr:last-child th.act-h{color:var(--sub); background:var(--bg); text-align:left;}
   .dt.h thead tr:last-child th{text-align:left;}
-  .dt.h thead tr:last-child th.sel, .dt.h thead tr:last-child th.no{text-align:center;}
+  .dt.h thead tr:last-child th.chk, .dt.h thead tr:last-child th.no{text-align:center;}
   .dt.h tr.grp th.cond-h, .dt.h tr.grp th.act-h{color:var(--sub);}
   /* Notion の「+ 新規」行と「+」列 */
   .dt td.addrow, .dt th.addcol{color:var(--faint); text-align:left; cursor:pointer; user-select:none; padding:0 8px; font-size:14px;}
@@ -477,7 +477,7 @@
         <button data-layout="h" title="1ルール1行の一覧形式（ルール＝行）">横表</button>
       </div>
       <span class="sep"></span>
-      <button class="btn" id="naBtn" title="選択したルールを「発生しない組み合わせ」にする／戻す"><span class="tg"><span>N/A にする</span><span class="off">N/A 解除</span></span></button>
+      <button class="btn" id="naBtn" title="選択したルールを「発生しない組み合わせ」にする／戻す"><span class="tg"><span>対象外にする</span><span class="off">対象外解除</span></span></button>
       <button class="btn warn" id="deleteBtn" title="選択したルールを削除">削除</button>
       <span class="sep"></span>
       <button class="btn" id="simplifyBtn" title="動作が同じで条件が1つだけ異なるルールを「-」でまとめます">ルールをまとめる</button>
@@ -519,15 +519,16 @@ const LS_KEY    = 'decision-table-builder.v2';
 const THEME_KEY = 'decision-table-builder.theme';
 const MAX_ROWS  = 4096;                   // 生成と網羅チェックの上限（組み合わせ数）
 const DASH      = '-';                    // 「この条件は結果に影響しない」を表す値
-const MARKS     = ['○', '×', ''];         // 動作セルの候補（空 = 未設定）
-const YES_NO    = ['○', '×'];             // 条件の値の既定
-const PRESETS   = ['○, ×'];               // 条件の値のテンプレート
+const YES       = '○', NO = '×';
+const YES_NO    = [YES, NO];              // 条件の値の既定。動作セルの候補にも使う
+const PRESETS   = [YES_NO.join(', ')];    // 条件の値のテンプレート
+const NA_LABEL  = '対象外';               // 「発生しない組み合わせ」の表示名
 
 const $ = s => document.querySelector(s);
 const dom = {
   sidebar: $('aside'), condList: $('#conditionList'), actList: $('#actionList'), comboCount: $('#comboCount'),
   title: $('#titleInput'), table: $('#tableWrap'), status: $('#status'), layoutSeg: $('#layoutSeg'),
-  naBtn: $('#naBtn'), selToggle: $('#selToggleBtn'), themeBtn: $('#themeBtn'),
+  naBtn: $('#naBtn'), deleteBtn: $('#deleteBtn'), selToggle: $('#selToggleBtn'), themeBtn: $('#themeBtn'),
   keysDlg: $('#keysDlg'), keysHead: $('#keysHead'), keysBody: $('#keysBody'),
   toast: $('#toast'), jsonFile: $('#jsonFile'), comboMenu: $('#comboMenu'), rowMenu: $('#rowMenu'), crumb: $('#crumbTitle'),
 };
@@ -541,6 +542,13 @@ const uniq = arr => [...new Set(arr)];
 const sameList = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const cartesian = arrs => arrs.reduce((acc, cur) => acc.flatMap(a => cur.map(c => [...a, c])), [[]]);
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+/* 画面からはみ出さないように、メニューの左上を決める */
+function placeMenu(menu, x, y){
+  menu.style.left = menu.style.top = '0px';   // 端に寄ったまま測ると幅が縮むので、いったん左上へ
+  menu.style.left = clamp(x, 8, window.innerWidth  - menu.offsetWidth  - 8) + 'px';
+  menu.style.top  = clamp(y, 8, window.innerHeight - menu.offsetHeight - 8) + 'px';
+}
 
 /* 全角文字を 2、それ以外を 1 として表示幅を数える（Markdown の桁そろえと列幅の見積もりに使う） */
 const WIDE = /[ᄀ-ᅟ⺀-〾ぁ-㏿㐀-䶿一-鿿ꀀ-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦①-⓿■-◿☀-➿　]/;
@@ -585,7 +593,7 @@ function sample(){
   s.conditions = [rank, amt]; s.actions = [free];
   s.rows = cartesian([rank.values, amt.values]).map(([r, a]) => ({
     id:nid(), cond:{ [rank.id]:r, [amt.id]:a }, na:false, note:'',
-    act:{ [free.id]: (r === '有料' || a === '○') ? '○' : '×' },
+    act:{ [free.id]: (r === '有料' || a === YES) ? YES : NO },
   }));
   return s;
 }
@@ -595,7 +603,9 @@ function newRow(){
   state.actions.forEach(a => r.act[a.id] = '');
   return r;
 }
-const cloneRow = r => ({ id:nid(), cond:{ ...r.cond }, act:{ ...r.act }, na:r.na, note:r.note || '' });
+/* id を持たないルールの中身。コピーと複製で使う */
+const rowData  = r => ({ cond:{ ...r.cond }, act:{ ...r.act }, na:!!r.na, note:r.note || '' });
+const cloneRow = r => ({ id:nid(), ...rowData(r) });
 
 const condVal   = (r, c) => r.cond[c.id] ?? DASH;
 const actVal    = (r, a) => r.act[a.id] || '';
@@ -603,6 +613,12 @@ const groupOf   = c => (c.group || '').trim();
 const ruleLabel = (n, na) => na ? `~~R${n}~~` : `R${n}`;
 const comboTotal = () => state.conditions.length ? state.conditions.reduce((n, c) => n * c.values.length, 1) : 0;
 const hasCondGroups = () => state.conditions.some(groupOf);
+/* ルール r が条件の値の組み合わせ combo（state.conditions と同じ並び）に当てはまるか。「-」は何にでも当たる */
+const matchesCombo = (r, combo) => state.conditions.every((c, k) => { const v = condVal(r, c); return v === DASH || v === combo[k]; });
+/* ルールの中身を比べるための文字列。skip に渡した条件は無視する */
+const rowKey = (r, skip) => JSON.stringify([
+  r.na, r.note || '', state.actions.map(a => actVal(r, a)), state.conditions.filter(c => c !== skip).map(c => condVal(r, c)),
+]);
 
 /* 連続する同じグループ名の条件をひとまとまり（run）にする */
 function condRuns(){
@@ -625,7 +641,7 @@ function validate(obj){
     values:Array.isArray(c.values) && c.values.length ? c.values.map(String) : [...YES_NO],
   }));
   s.actions = obj.actions.map(a => ({ id:+a.id, name:String(a.name ?? '') }));
-  s.rows = obj.rows.map(r => ({ id:+r.id, cond:{ ...(r.cond || {}) }, act:{ ...(r.act || {}) }, na:!!r.na, note:String(r.note || '') }));
+  s.rows = obj.rows.map(r => ({ id:+r.id, ...rowData({ cond:r.cond || {}, act:r.act || {}, na:r.na, note:String(r.note || '') }) }));
   return s;
 }
 
@@ -651,7 +667,7 @@ function redo(){
   if (!history.redo.length) return toast('やり直す操作はありません');
   history.undo.push(JSON.stringify(state)); restore(history.redo.pop());
 }
-function restore(json){ state = JSON.parse(json); fixUid(); selected.clear(); pending = null; renderAll(); }
+function restore(json){ pending = null; setState(JSON.parse(json)); }
 
 /* ======================================================================
  * 保存と読み込み
@@ -661,8 +677,10 @@ function load(){
   try { const s = validate(JSON.parse(localStorage.getItem(LS_KEY))); if (s) return s; } catch (e) {}
   return sample();
 }
-/* 表全体を置き換える（サンプル・新規・JSON 読込で共通） */
-function replaceState(next, msg){ snapshot(); state = next; fixUid(); selected.clear(); renderAll(); toast(msg, true); }
+/* 表全体を差し替えて描き直す。選択は持ち越さない */
+function setState(next){ state = next; fixUid(); selected.clear(); renderAll(); }
+/* 履歴に残しつつ表全体を置き換える（サンプル・新規・JSON 読込で共通） */
+function replaceState(next, msg){ snapshot(); setState(next); toast(msg, true); }
 
 /* ======================================================================
  * 選択（ルールの選択状態は state に含めない）
@@ -697,10 +715,10 @@ function toggleState(){
 }
 /* トグルボタンは、今押すと何が起きるかをラベルにする（幅を変えないため2枚重ねを切り替える） */
 function swapLabel(btn, alt){
-  const s = btn.querySelectorAll ? btn.querySelectorAll('.tg > span') : [];
-  if (s.length < 2) return;
-  s[0].classList.toggle('off', !!alt);
-  s[1].classList.toggle('off', !alt);
+  const [main, sub] = btn.querySelectorAll('.tg > span');
+  if (!sub) return;
+  main.classList.toggle('off', !!alt);
+  sub.classList.toggle('off', !alt);
 }
 function updateSelUI(){
   const all = $('#selAllChk');
@@ -709,7 +727,7 @@ function updateSelUI(){
   const t = toggleState();
   swapLabel(dom.selToggle, t.allSelected);
   swapLabel(dom.naBtn, t.naOn);
-  [dom.naBtn, $('#deleteBtn')].forEach(b => b.classList.toggle('dim', !selected.size));
+  [dom.naBtn, dom.deleteBtn].forEach(b => b.classList.toggle('dim', !selected.size));
 }
 
 /* ======================================================================
@@ -749,7 +767,7 @@ const groupOptions = () => [
 ];
 /* 動作の候補：○ / × と、その列ですでに使った値 + 空欄 */
 const actionOptions = a => [
-  ...uniq([...MARKS.filter(Boolean), ...state.rows.map(r => actVal(r, a)).filter(Boolean)]).map(v => ({ value:v, label:v, color:tagColor(v) })),
+  ...uniq([...YES_NO, ...state.rows.map(r => actVal(r, a)).filter(Boolean)]).map(v => ({ value:v, label:v, color:tagColor(v) })),
   { value:'', label:'（空欄）', color:'none' },
 ];
 /* 条件の候補：定義した値 + 「-」 */
@@ -799,19 +817,27 @@ function renderSidebar(){
 /* 値のタグの色（Notion のセレクトと同じ見え方）。○ は緑、× は赤、- と空欄は無色、それ以外は値の並び順で色を回す */
 const TV_COLORS = ['blue', 'purple', 'orange', 'pink', 'yellow', 'brown', 'gray'];
 function tagColor(v, list){
-  if (v === '○') return 'green';
-  if (v === '×') return 'red';
+  if (v === YES) return 'green';
+  if (v === NO) return 'red';
   if (v === DASH || v === '') return 'none';
   const i = list ? list.indexOf(v) : -1;
   return i < 0 ? 'gray' : TV_COLORS[i % TV_COLORS.length];
 }
 const tagHtml = (color, label) => `<span class="tagv tv-${color}">${escH(label)}</span>`;
 const tagv = (v, list) => tagHtml(tagColor(v, list), v);
-const markClass = v => v === '○' ? 'on' : v === '×' ? 'off' : '';
+const markClass = v => v === YES ? 'on' : v === NO ? 'off' : '';
 const cellClass = cls => 'cell' + (cls ? ' ' + cls : '');
 /* 値に応じてクラスを付け直す。入力モードの印だけは消さずに残す */
 const setCellClass = (el, cls) => { el.className = cellClass(cls) + (inputCell === el ? ' editing' : ''); };
 const pickClass = v => 'pick' + (v === DASH ? ' dash' : '');
+/* セルの中身だけを作り直し、新しい要素にフォーカスを移す（表全体は描き直さない） */
+function replaceCell(el, html, focus = true){
+  const td = el.closest('td'); if (!td) return null;
+  td.innerHTML = html;
+  const next = td.querySelector('.cell');
+  if (focus && next) next.focus();
+  return next;
+}
 
 /* 条件セル：Notion のセレクトと同じく、クリックか Enter でタグの一覧を開いて選ぶ */
 function condCell(r, c){
@@ -844,21 +870,21 @@ const emptyMsg = msg => `<div class="empty">${msg}</div>`;
 /* 横表：1ルール = 1行 */
 function tableH(C, A, R){
   let h = '<table class="dt h"><thead>';
-  h += `<tr class="grp"><th class="sel"></th><th class="no"></th>`
+  h += `<tr class="grp"><th class="chk"></th><th class="no"></th>`
      + (C.length ? `<th class="cond-h" colspan="${C.length}">条件</th>` : '')
      + (A.length ? `<th class="act-h" colspan="${A.length}">動作 / 結果</th>` : '')
      + '<th class="note-h"></th></tr>';
   if (hasCondGroups()) {
-    h += '<tr class="gsub"><th class="sel"></th><th class="no"></th>'
+    h += '<tr class="gsub"><th class="chk"></th><th class="no"></th>'
        + condRuns().map(run => `<th class="cond-h gspan" colspan="${run.items.length}">${escH(run.group)}</th>`).join('')
        + (A.length ? `<th class="act-h" colspan="${A.length}"></th>` : '') + '<th class="note-h"></th></tr>';
   }
-  h += '<tr><th class="sel"><input type="checkbox" id="selAllChk" title="全選択"></th><th class="no">#</th>'
+  h += '<tr><th class="chk"><input type="checkbox" id="selAllChk" title="全選択"></th><th class="no">#</th>'
      + C.map((c, i) => `<th class="cond-h">${condHead(c, i)}</th>`).join('')
      + A.map((a, i) => `<th class="act-h">${actHead(a, i)}</th>`).join('')
      + '<th class="note-h">備考</th></tr></thead><tbody>';
   h += R.map((r, i) =>
-    `<tr data-rid="${r.id}" class="${rowCls(r)}"><td class="sel">${ruleChk(r, i)}</td><td class="no">${i+1}</td>`
+    `<tr data-rid="${r.id}" class="${rowCls(r)}"><td class="chk">${ruleChk(r, i)}</td><td class="no">${i+1}</td>`
     + C.map(c => `<td class="cond-c">${condCell(r, c)}</td>`).join('')
     + A.map(a => `<td class="act-c">${actCell(r, a)}</td>`).join('')
     + `<td class="note-c">${noteCell(r)}</td></tr>`).join('');
@@ -925,7 +951,7 @@ function coverage(){
   const uncovered = [], dup = [];
   for (const combo of cartesian(C.map(c => c.values))) {
     const hits = [];
-    state.rows.forEach((r, i) => { if (C.every((c, k) => condVal(r, c) === DASH || condVal(r, c) === combo[k])) hits.push(i + 1); });
+    state.rows.forEach((r, i) => { if (matchesCombo(r, combo)) hits.push(i + 1); });
     if (!hits.length) uncovered.push(combo); else if (hits.length > 1) dup.push({ combo, rows:hits });
   }
   return { total, uncovered, dup };
@@ -957,7 +983,7 @@ function statusItems(){
   const split = uniq(gs.filter((g, i) => gs.indexOf(g) !== i));
   if (split.length) items.push(badge('warn', `離れているグループ ${split.length} 件`, split.map(g => `${g}　→　↑↓ で条件を隣り合わせにするとまとまります`)));
   const na = R.filter(r => r.na).length;
-  items.push(badge('', `ルール ${R.length} 件${na ? `（N/A ${na}）` : ''}`));
+  items.push(badge('', `ルール ${R.length} 件${na ? `（${NA_LABEL} ${na}）` : ''}`));
   items.push('<span class="selinfo" id="selInfo"></span>');
   return items;
 }
@@ -975,7 +1001,7 @@ function matrixToMd(m){
   const line = r => '| ' + r.map((c, i) => c + ' '.repeat(w[i] - dispW(c))).join(' | ') + ' |';
   return [line(m[0]), '| ' + w.map(x => '-'.repeat(x)).join(' | ') + ' |', ...m.slice(1).map(line)].join('\n');
 }
-const noteOf = r => { const n = mdEsc(r.note); return r.na ? (n ? `N/A：${n}` : 'N/A（発生しない）') : n; };
+const noteOf = r => { const n = mdEsc(r.note); return r.na ? (n ? `${NA_LABEL}：${n}` : `${NA_LABEL}（発生しない）`) : n; };
 
 /* 表を 2 次元配列にする。Markdown は結合セルを持てないので、向きごとにグループの表し方を変える */
 function buildMatrix(layout){
@@ -1009,7 +1035,7 @@ function buildMarkdown(){
   const parts = [matrixToMd(buildMatrix(state.layout))];
   const legend = [];
   if (state.rows.some(r => state.conditions.some(c => condVal(r, c) === DASH))) legend.push('`-` ：この条件は結果に影響しない（どちらでもよい）');
-  if (state.rows.some(r => r.na)) legend.push('`N/A` ：発生しない組み合わせ');
+  if (state.rows.some(r => r.na)) legend.push(`\`${NA_LABEL}\` ：発生しない組み合わせ`);
   if (legend.length) parts.push('', ...legend.map(l => '- ' + l));
   return parts.join('\n');
 }
@@ -1041,8 +1067,9 @@ function commitSidebar(){ renderSidebar(); commit(); }                   // 条�
 function renderLayoutSeg(){ dom.layoutSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.layout === state.layout)); }
 function renderCrumb(){ dom.crumb.textContent = (state.title || '').trim() || '無題'; }
 function renderAll(){ dom.title.value = state.title || ''; renderCrumb(); renderLayoutSeg(); commitSidebar(); }
-const refreshTableSoon  = debounce(commit, 120);                                        // 名前を打っている間の再描画
-const refreshStatusSoon = debounce(() => { renderStatus(); persist(); }, 150);         // セルに文字を打っている間
+function commitStatus(){ renderStatus(); persist(); }                    // セルの値だけが変わったあと（表は描き直さない）
+const refreshTableSoon  = debounce(commit, 120);                         // 名前を打っている間の再描画
+const refreshStatusSoon = debounce(commitStatus, 150);                   // セルに文字を打っている間
 
 /* ======================================================================
  * 操作：条件と動作の定義
@@ -1064,7 +1091,7 @@ function setGroup(id, name){ recordEdit(); byId(state.conditions, id).group = na
 function dedupeRows(){
   const seen = new Set();
   state.rows = state.rows.filter(r => {
-    const key = JSON.stringify([r.na, r.note || '', state.conditions.map(c => condVal(r, c)), state.actions.map(a => actVal(r, a))]);
+    const key = rowKey(r);
     if (seen.has(key)) return false; seen.add(key); return true;
   });
 }
@@ -1109,7 +1136,7 @@ function addRow(){
   snapshot(); state.rows.push(newRow()); commit();
   dom.table.scrollTo({ top:1e9, left:1e9 });
 }
-/* 全組み合わせを作り直す。既存ルールに当てはまる組み合わせは動作・N/A・備考を引き継ぐ */
+/* 全組み合わせを作り直す。既存ルールに当てはまる組み合わせは動作・対象外・備考を引き継ぐ */
 function generate(){
   if (!state.conditions.length) return toast('条件を1つ以上追加してください');
   const total = comboTotal();
@@ -1119,7 +1146,7 @@ function generate(){
   state.rows = cartesian(state.conditions.map(c => c.values)).map(combo => {
     const r = newRow();
     state.conditions.forEach((c, i) => r.cond[c.id] = combo[i]);
-    const m = old.find(o => state.conditions.every(c => condVal(o, c) === DASH || condVal(o, c) === condVal(r, c)));
+    const m = old.find(o => matchesCombo(o, combo));
     if (m) { state.actions.forEach(a => r.act[a.id] = actVal(m, a)); r.na = m.na; r.note = m.note || ''; }
     return r;
   });
@@ -1131,7 +1158,7 @@ function deleteRows(){
   snapshot(); state.rows = state.rows.filter(r => !selected.has(r.id)); selected.clear(); commit();
   toast(`${s.length} 件のルールを削除しました`, true);
 }
-/* 選んだルールがすべて N/A なら解除、そうでなければ N/A にする */
+/* 選んだルールがすべて対象外なら解除、そうでなければ対象外にする */
 function toggleNa(){
   const s = needSel(); if (!s) return;
   const off = s.every(r => r.na);
@@ -1161,7 +1188,7 @@ function simplifyRows(){
       const groups = new Map();
       for (const r of state.rows) {
         if (condVal(r, c) === DASH) continue;
-        const key = JSON.stringify([r.na, r.note || '', state.actions.map(a => actVal(r, a)), state.conditions.filter(x => x !== c).map(x => condVal(r, x))]);
+        const key = rowKey(r, c);
         (groups.get(key) || groups.set(key, []).get(key)).push(r);
       }
       for (const grp of groups.values()) {
@@ -1181,37 +1208,38 @@ function simplifyRows(){
   toast(`${before} 行 → ${state.rows.length} 行にまとめました`, true);
 }
 
+/* ルールを選択の直後（選択がなければ末尾）に差し込み、差し込んだものを選択する */
+function insertRows(rows, msg){
+  snapshot();
+  const copies = rows.map(cloneRow), s = selRows();
+  state.rows.splice(s.length ? state.rows.indexOf(s[s.length - 1]) + 1 : state.rows.length, 0, ...copies);
+  selected = new Set(copies.map(r => r.id)); commit();
+  toast(`${copies.length} 件のルールを${msg}`, true);
+}
 /* 選んだルールをすぐ後ろに複製する（Notion の「複製」と同じ） */
 function duplicateRows(){
   const s = needSel(); if (!s) return;
-  snapshot();
-  const copies = s.map(cloneRow);
-  state.rows.splice(state.rows.indexOf(s[s.length - 1]) + 1, 0, ...copies);
-  selected = new Set(copies.map(r => r.id)); commit();
-  toast(`${copies.length} 件のルールを複製しました`, true);
+  insertRows(s, '複製しました');
 }
 
 /* ルールの右クリックメニュー（Notion の行メニューに合わせる） */
-const ROW_ACTS = { dup:() => duplicateRows(), na:() => toggleNa(), up:() => moveSel(-1), down:() => moveSel(1), del:() => deleteRows() };
+const ROW_ACTS = { dup:duplicateRows, na:toggleNa, up:() => moveSel(-1), down:() => moveSel(1), del:deleteRows };
 function openRowMenu(x, y){
   closeRowMenu();
   const t = toggleState();
   const items = [
     ['dup', '複製', `${modKey} + D`],
-    ['na', t.naOn ? 'N/A を解除' : 'N/A にする', ''],
+    ['na', t.naOn ? `${NA_LABEL}を解除` : `${NA_LABEL}にする`, ''],
     ['up', '前へ', `${modKey} + Shift + ←`],
     ['down', '後ろへ', `${modKey} + Shift + →`],
     ['-'],
     ['del', '削除', 'Delete', 'danger'],
   ];
   const menu = dom.rowMenu;
-  menu.innerHTML = `<div class="mhead">${selected.size} 件のルール</div>` + items.map(it => it[0] === '-' ? '<hr>'
-    : `<button type="button" role="menuitem" data-act="${it[0]}" class="${it[3] || ''}">${escH(it[1])}${it[2] ? `<span class="k">${escH(it[2])}</span>` : ''}</button>`).join('');
+  menu.innerHTML = `<div class="mhead">${selected.size} 件のルール</div>` + items.map(([act, label, key, cls]) => act === '-' ? '<hr>'
+    : `<button type="button" role="menuitem" data-act="${act}" class="${cls || ''}">${escH(label)}${key ? `<span class="k">${escH(key)}</span>` : ''}</button>`).join('');
   menu.hidden = false;
-  menu.style.left = '0px'; menu.style.top = '0px';
-  const mw = menu.offsetWidth, mh = menu.offsetHeight;
-  menu.style.left = Math.max(8, Math.min(x, window.innerWidth - mw - 8)) + 'px';
-  menu.style.top  = Math.max(8, Math.min(y, window.innerHeight - mh - 8)) + 'px';
+  placeMenu(menu, x, y);
   const first = menu.querySelector('button'); if (first) first.focus();
 }
 function closeRowMenu(){ if (dom.rowMenu.hidden) return; dom.rowMenu.hidden = true; dom.rowMenu.innerHTML = ''; }
@@ -1231,17 +1259,12 @@ let rowClip = [];
 function copyRows(){
   const s = selRows();
   if (!s.length) return toast('コピーするルールを選択してください');
-  rowClip = s.map(r => ({ cond:{ ...r.cond }, act:{ ...r.act }, na:r.na, note:r.note || '' }));
+  rowClip = s.map(rowData);
   toast(`${rowClip.length} 件のルールをコピーしました（${modKey} + V で貼り付け）`);
 }
 function pasteRows(){
   if (!rowClip.length) return toast(`先に ${modKey} + C でルールをコピーしてください`);
-  snapshot();
-  const copies = rowClip.map(cloneRow);
-  const s = selRows();
-  state.rows.splice(s.length ? state.rows.indexOf(s[s.length - 1]) + 1 : state.rows.length, 0, ...copies);
-  selected = new Set(copies.map(r => r.id)); commit();
-  toast(`${copies.length} 件のルールを貼り付けました`, true);
+  insertRows(rowClip, '貼り付けました');
 }
 
 /* 文字を打てるセル（動作・備考）は表を作り直さず、その場だけ更新してフォーカスを保つ */
@@ -1285,10 +1308,9 @@ function openCombo(input, options, onPick){
   menu.hidden = false;
   const r = input.getBoundingClientRect();
   menu.style.cssText = `min-width:${r.width}px; left:0; top:0`;
-  const mh = menu.offsetHeight, mw = menu.offsetWidth;
-  const fitsBelow = window.innerHeight - r.bottom >= mh + 8;
-  menu.style.top = (fitsBelow || r.top < mh + 8 ? r.bottom + 4 : r.top - mh - 4) + 'px';
-  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + 'px';
+  const mh = menu.offsetHeight;
+  const fitsBelow = window.innerHeight - r.bottom >= mh + 8;   // 下に入らなければ上に出す（上にも入らなければ下）
+  placeMenu(menu, r.left, fitsBelow || r.top < mh + 8 ? r.bottom + 4 : r.top - mh - 4);
   menu.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { comboActive = +b.dataset.i; pickCombo(); }));
   paintCombo();
 }
@@ -1318,8 +1340,8 @@ function openComboFor(input){
     if (!c || !r) return;
     openCombo(input, condOptions(c), v => {
       if (v !== condVal(r, c)) { snapshot(); r.cond[c.id] = v; }
-      input.dataset.val = v; input.className = cellClass(pickClass(v)); input.innerHTML = tagv(v, c.values); input.focus();
-      renderStatus(); persist();
+      replaceCell(input, condCell(r, c));
+      commitStatus();
     });
   } else if (input.dataset.aid) {
     const a = byId(state.actions, +input.dataset.aid), r = byId(state.rows, +input.dataset.rid);
@@ -1330,8 +1352,8 @@ function openComboFor(input){
       if (v === EDIT_OPT) return enterInputMode(input, true);
       if (v !== actVal(r, a)) { recordEdit(); r.act[a.id] = v; }
       if (input.tagName === 'INPUT') { input.value = v; setCellClass(input, markClass(v)); input.focus(); }
-      else { const td = input.closest('td'); td.innerHTML = actCell(r, a); td.querySelector('.cell').focus(); }
-      renderStatus(); persist();
+      else replaceCell(input, actCell(r, a));
+      commitStatus();
     });
   } else if (input.dataset.role === 'cgroup') {
     const item = input.closest('.item'); if (!item) return;
@@ -1368,9 +1390,7 @@ function enterInputMode(el, selectAll){
   leaveInputMode();
   if (el.matches('button.cell.act')) {                 // 動作セルはタグのボタンを入力欄に置き換える
     const r = byId(state.rows, +el.dataset.rid), a = byId(state.actions, +el.dataset.aid); if (!r || !a) return;
-    const td = el.closest('td');
-    td.innerHTML = actInput(r, a);
-    el = td.querySelector('input.cell');
+    el = replaceCell(el, actInput(r, a), false); if (!el) return;
   }
   inputCell = el;
   el.classList.add('editing');
@@ -1383,8 +1403,7 @@ function leaveInputMode(){
   el.classList.remove('editing');
   if (el.dataset.aid && el.tagName === 'INPUT') {      // 動作セルはタグのボタンに戻す
     const r = byId(state.rows, +el.dataset.rid), a = byId(state.actions, +el.dataset.aid);
-    const td = el.closest('td'), refocus = document.activeElement === el;
-    if (r && a && td) { td.innerHTML = actCell(r, a); if (refocus) td.querySelector('.cell').focus(); }
+    if (r && a) replaceCell(el, actCell(r, a), document.activeElement === el);
     return;
   }
   if (el.tagName === 'INPUT') el.setAttribute('readonly', '');
@@ -1399,9 +1418,8 @@ function nextCell(grid, el, dRow, dCol){
   let r = -1, c = -1;
   grid.forEach((row, i) => { const j = row.indexOf(el); if (j >= 0) { r = i; c = j; } });
   if (r < 0) return null;
-  const clamp = (v, n) => Math.max(0, Math.min(n - 1, v));
-  const row = grid[clamp(r + dRow, grid.length)];
-  const next = row && row[clamp(c + dCol, row.length)];
+  const row = grid[clamp(r + dRow, 0, grid.length - 1)];
+  const next = row && row[clamp(c + dCol, 0, row.length - 1)];
   return next && next !== el ? next : null;
 }
 function moveCell(el, dRow, dCol){
@@ -1624,7 +1642,7 @@ function bindEvents(){
     state.layout = b.dataset.layout; renderLayoutSeg(); renderTable(); persist();
   });
   dom.naBtn.addEventListener('click', toggleNa);
-  on('#deleteBtn', 'click', deleteRows);
+  dom.deleteBtn.addEventListener('click', deleteRows);
   on('#simplifyBtn', 'click', simplifyRows);
   dom.selToggle.addEventListener('click', toggleSelectAll);
   on('#copyMdBtn', 'click', () => copyText(buildMarkdown(), 'Markdown'));
