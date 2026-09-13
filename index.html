@@ -480,7 +480,7 @@
       <button class="btn" id="naBtn" title="選択したルールを「発生しない組み合わせ」にする／戻す"><span class="tg"><span>対象外にする</span><span class="off">対象外解除</span></span></button>
       <button class="btn warn" id="deleteBtn" title="選択したルールを削除">削除</button>
       <span class="sep"></span>
-      <button class="btn" id="simplifyBtn" title="動作が同じで条件が1つだけ異なるルールを「-」でまとめます">ルールをまとめる</button>
+      <button class="btn" id="simplifyBtn" title="動作・備考が同じルールを、結果に影響しない条件を「-」に置き換えて最少の行数にまとめます">ルールをまとめる</button>
       <span class="spacer"></span>
       <button class="btn ghost" id="selToggleBtn" title="すべてのルールを選ぶ／選択を解除する"><span class="tg"><span>全選択</span><span class="off">選択解除</span></span></button>
       <span class="sep"></span>
@@ -1179,31 +1179,80 @@ function toggleSelectAll(){
   if (!all) state.rows.forEach(r => selected.add(r.id));
   renderTable();
 }
-/* 動作・備考・他の条件が同じで、ある条件の値だけがそろって出そろっているルール群を「-」1 行にまとめる。まとまらなくなるまで繰り返す */
+/* 動作・備考・対象外が同じルール群を、カバーする条件の値の組み合わせにいったん展開してから
+ * 「ある条件の全値が出そろった行たちを『-』1 行にする」統合で組み直す。
+ * 重複したルール・「-」の行に含まれるルール・「-」同士の重なりもこれで解消される。
+ * 組み直しても行数が減らないグループは元のまま残す */
 function simplifyRows(){
   if (!state.rows.length) return toast('ルールがありません');
   const before = state.rows.length, json = JSON.stringify(state);
-  const mergeOnce = () => {
-    for (const c of state.conditions) {
-      const groups = new Map();
-      for (const r of state.rows) {
-        if (condVal(r, c) === DASH) continue;
-        const key = rowKey(r, c);
-        (groups.get(key) || groups.set(key, []).get(key)).push(r);
-      }
-      for (const grp of groups.values()) {
-        const vals = new Set(grp.map(r => r.cond[c.id]));
-        if (!c.values.every(v => vals.has(v))) continue;
-        grp[0].cond[c.id] = DASH;
-        const drop = new Set(grp.slice(1).map(r => r.id));
-        state.rows = state.rows.filter(r => !drop.has(r.id));
-        return true;
-      }
+
+  /* 値の定義にない値を使う行は展開できないので、まとめの対象から外してそのまま残す */
+  const stale = r => state.conditions.some(c => { const v = condVal(r, c); return v !== DASH && !c.values.includes(v); });
+
+  /* 動作・備考・対象外が同じルールをグループにする。表の並び順はグループの初出位置で保つ */
+  const sig = r => JSON.stringify([r.na, r.note || '', state.actions.map(a => actVal(r, a))]);
+  const order = [], byKey = new Map();
+  for (const r of state.rows) {
+    const k = stale(r) ? null : sig(r);
+    const g = k !== null && byKey.get(k);
+    if (g) g.rows.push(r);
+    else { const e = { rows:[r], fixed:k === null }; order.push(e); if (k !== null) byKey.set(k, e); }
+  }
+
+  /* ある条件の全値が出そろった行たちを「-」1 行にする。まとまらなくなるまで繰り返す。
+   * rows は state.conditions と同じ並びの値の配列。戻り値は減った行数 */
+  const merge = rows => {
+    for (let merged = true; merged;) {
+      merged = false;
+      state.conditions.forEach((c, ci) => {
+        const buckets = new Map();
+        for (const vals of rows) {
+          if (vals[ci] === DASH) continue;
+          const k = JSON.stringify(vals.map((v, i) => i === ci ? '' : v));
+          (buckets.get(k) || buckets.set(k, []).get(k)).push(vals);
+        }
+        for (const b of buckets.values()) {
+          if (!c.values.every(v => b.some(x => x[ci] === v))) continue;
+          b[0][ci] = DASH;
+          const drop = new Set(b.slice(1));
+          rows = rows.filter(v => !drop.has(v));
+          merged = true;
+        }
+      });
     }
-    return false;
+    return rows;
   };
-  while (mergeOnce()) {}
-  if (state.rows.length === before) return toast('まとめられるルールはありませんでした');
+
+  /* 1 グループを最少の行数に組み直す。減らないときは null（元のまま使う） */
+  const expandable = comboTotal() <= MAX_ROWS;   // 組み合わせが多すぎるときは展開せず「-」を保ったまま統合する
+  const minimize = grp => {
+    let rows;
+    if (expandable) {
+      const combos = new Set();
+      grp.forEach(r => cartesian(state.conditions.map(c => condVal(r, c) === DASH ? c.values : [condVal(r, c)]))
+        .forEach(combo => combos.add(JSON.stringify(combo))));
+      rows = [...combos].map(s => JSON.parse(s));
+    } else {
+      /* 重複した行と、他の行（「-」を含む）に包含される行を落としてから統合する */
+      const covers = (a, b) => a.every((v, i) => v === DASH || v === b[i]);
+      rows = grp.map(r => state.conditions.map(c => condVal(r, c)));
+      rows = rows.filter((r, i) => !rows.some((s, j) => i !== j && covers(s, r) && (j < i || !covers(r, s))));
+    }
+    rows = merge(rows);
+    if (rows.length >= grp.length) return null;
+    return rows.map(vals => {
+      const nr = cloneRow(grp[0]);
+      state.conditions.forEach((c, i) => nr.cond[c.id] = vals[i]);
+      return nr;
+    });
+  };
+
+  state.rows = order.flatMap(e => e.fixed || e.rows.length === 1 ? e.rows : (minimize(e.rows) || e.rows));
+  if (state.rows.length === before) {
+    const why = order.some(e => e.fixed) ? '。値の定義にない値を使う行はまとめられません（状態バーの「定義外の値」を参照）' : '';
+    return toast('まとめられるルールはありませんでした' + why);
+  }
   pushUndo(json); selected.clear(); commit();
   toast(`${before} 行 → ${state.rows.length} 行にまとめました`, true);
 }
